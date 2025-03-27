@@ -12,9 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
-        $middleware->api()->prepend(\App\Http\Middleware\EnsureApiAuthenticated::class);
+        $middleware->alias([
+            'api.auth' => \App\Http\Middleware\EnsureApiAuthenticated::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
-    })->create();
+})->create();
