@@ -26,6 +26,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/attendance', [AttendanceController::class, 'index']);
     Route::get('/attendance/paginate', [AttendanceController::class, 'indexPaginate']);
-    Route::get('/version', [VersionController::class, 'checkVersion']);
+    Route::get('/version/check', [VersionController::class, 'checkVersion']); // Ganti ini
 
 });
