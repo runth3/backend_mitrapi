@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => env('DB_CONNECTION', 'mysql'),
 
     /*
     |--------------------------------------------------------------------------
@@ -61,6 +61,24 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
+         // Second database connection
+    'mysql_attendance' => [
+        'driver' => 'mysql',
+        'host' => env('DB_HOST_SECOND', '127.0.0.1'),
+        'port' => env('DB_PORT_SECOND', '3306'),
+        'database' => env('DB_DATABASE_SECOND', 'forge'),
+        'username' => env('DB_USERNAME_SECOND', 'forge'),
+        'password' => env('DB_PASSWORD_SECOND', ''),
+        'charset' => 'utf8mb4',
+        'collation' => 'utf8mb4_unicode_ci',
+        'prefix' => '',
+        'prefix_indexes' => true,
+        'strict' => true,
+        'engine' => null, 
+        'options' => extension_loaded('pdo_mysql') ? array_filter([
+            PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+        ]) : [],
+    ],
 
         'mariadb' => [
             'driver' => 'mariadb',
