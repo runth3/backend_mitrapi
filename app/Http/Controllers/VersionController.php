@@ -9,7 +9,7 @@ class VersionController extends Controller
 
         return response()->json([
             'min_version' => '1.1.0',
-            'update_url' => 'https://play.google.com/store/apps/details?id=com.example',
+            'update_url' => 'https://play.google.com/store/apps/details?id=s',
             'maintenance' => false,
         ]);
     } 
