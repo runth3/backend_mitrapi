@@ -10,9 +10,8 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Public routes
-Route::post('auth/login', [AuthController::class, 'login']);
-
+// Public routes 
+Route::post('auth/login', [AuthController::class, 'login'])->name('login');
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
    
