@@ -33,8 +33,6 @@ class User extends Authenticatable
         'remember_token',
         'created_at',
         'updated_at',
-    
-
     ];
 
     /**
@@ -58,5 +56,15 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Define the relationship with the DataPegawai model.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function dataPegawai()
+    {
+        return $this->hasOne(\App\Models\DataPegawai::class, 'nip', 'username');
     }
 }

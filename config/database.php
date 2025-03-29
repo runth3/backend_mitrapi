@@ -42,43 +42,69 @@ return [
             'synchronous' => null,
         ],
 
+        // Default database connection
         'mysql' => [
             'driver' => 'mysql',
-            'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
+            'database' => env('DB_DATABASE', 'forge'),
+            'username' => env('DB_USERNAME', 'forge'),
             'password' => env('DB_PASSWORD', ''),
             'unix_socket' => env('DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
-            'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
         ],
-         // Second database connection
-    'mysql_attendance' => [
-        'driver' => 'mysql',
-        'host' => env('DB_HOST_SECOND', '127.0.0.1'),
-        'port' => env('DB_PORT_SECOND', '3306'),
-        'database' => env('DB_DATABASE_SECOND', 'forge'),
-        'username' => env('DB_USERNAME_SECOND', 'forge'),
-        'password' => env('DB_PASSWORD_SECOND', ''),
-        'charset' => 'utf8mb4',
-        'collation' => 'utf8mb4_unicode_ci',
-        'prefix' => '',
-        'prefix_indexes' => true,
-        'strict' => true,
-        'engine' => null, 
-        'options' => extension_loaded('pdo_mysql') ? array_filter([
-            PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-        ]) : [],
-    ],
+
+        // Absen database connection
+        'mysql_absen' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST_ABSEN', '127.0.0.1'),
+            'port' => env('DB_PORT_ABSEN', '3306'),
+            'database' => env('DB_DATABASE_ABSEN', 'forge'),
+            'username' => env('DB_USERNAME_ABSEN', 'forge'),
+            'password' => env('DB_PASSWORD_ABSEN', ''),
+            'unix_socket' => env('DB_SOCKET_ABSEN', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+            'engine' => null,
+        ],
+
+        // Simpeg database connection
+        'mysql_simpeg' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST_SIMPEG', '127.0.0.1'),
+            'port' => env('DB_PORT_SIMPEG', '3306'),
+            'database' => env('DB_DATABASE_SIMPEG', 'forge'),
+            'username' => env('DB_USERNAME_SIMPEG', 'forge'),
+            'password' => env('DB_PASSWORD_SIMPEG', ''),
+            'unix_socket' => env('DB_SOCKET_SIMPEG', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+            'engine' => null,
+        ],
+
+        // Ekin database connection
+        'mysql_ekin' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST_EKIN', '127.0.0.1'),
+            'port' => env('DB_PORT_EKIN', '3306'),
+            'database' => env('DB_DATABASE_EKIN', 'forge'),
+            'username' => env('DB_USERNAME_EKIN', 'forge'),
+            'password' => env('DB_PASSWORD_EKIN', ''),
+            'unix_socket' => env('DB_SOCKET_EKIN', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+            'engine' => null,
+        ],
 
         'mariadb' => [
             'driver' => 'mariadb',

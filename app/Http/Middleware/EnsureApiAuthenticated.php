@@ -13,14 +13,18 @@ class EnsureApiAuthenticated
         $token = $request->bearerToken();
         \Log::info('Checking token', ['token' => $token]);
 
-        // Cek user pake Sanctum bawaan
-        $user = $request->user('sanctum'); // Langsung ambil dari request
+        // Check user using Sanctum
+        $user = $request->user('sanctum'); // Retrieve user from Sanctum
         if (!$user) {
-            \Log::info('Token invalid or user not found');
+            \Log::info('Token invalid or user not found', [
+                'token' => $token,
+                'headers' => $request->headers->all(),
+            ]);
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        \Log::info('User authenticated', ['user_id' => $user->id]);
+        \Log::info('User authenticated', ['user_id' => $user->id, 'user' => $user]);
+
         return $next($request);
     }
 }
