@@ -1,66 +1,92 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+Backend Overview
+This backend is built with Laravel and provides CRUD functionality for managing performances, with additional features like soft delete, filtering, and admin restrictions.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Features
+Authentication and Authorization
 
-## About Laravel
+Uses middleware to authenticate users (api.auth).
+Admin-only routes are protected by AdminMiddleware.
+Performance Management
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+CRUD Operations:
+Create, read, update, and soft delete (stsDel set to 1) performance records.
+Soft Delete:
+Records are not permanently deleted; instead, stsDel is updated to 1.
+Approval Status (apv):
+Default apv is set to P (Pending) on creation.
+Updates are restricted if apv is A (Approved) or R (Rejected).
+Filtering
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Performances can be filtered by:
+month and year (required).
+apv status (P, A, R, or all if apv is null).
+NIP (optional, for user-specific filtering).
+Caching
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Monthly performance data is cached for improved performance.
+Soft Delete
 
-## Learning Laravel
+Instead of deleting records, the stsDel field is updated to 1.
+Validation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Ensures data integrity with validation rules for fields like tglKinerja, durasiKinerjaMulai, and durasiKinerjaSelesai.
+API Endpoints
+Authentication
+Login: POST /api/login
+Logout: POST /api/logout
+Performance
+List Performances: GET /api/performances
+Returns all performances for the authenticated user (excluding soft-deleted records).
+Filter Performances: POST /api/performances/filter
+Filters performances by month, year, apv, and optionally NIP.
+Create Performance: POST /api/performances
+Creates a new performance record (default apv = P).
+Show Performance: GET /api/performances/{id}
+Retrieves a specific performance record.
+Update Performance: PUT /api/performances/{id}
+Updates a performance record (restricted if apv = A or R).
+Soft Delete Performance: DELETE /api/performances/{id}
+Marks a performance record as deleted by setting stsDel = 1.
+Middleware
+api.auth:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Ensures the user is authenticated.
+AdminMiddleware:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Restricts access to admin-only routes.
+Returns a 403 Unauthorized response if the user is not an admin.
+Database Fields
+Performance Table
+Field Type Description
+id integer Primary key.
+nama string Name of the performance task.
+penjelasan string Description of the performance task.
+tglKinerja date Date of the performance.
+durasiKinerjaMulai time Start time of the performance.
+durasiKinerjaSelesai time End time of the performance.
+durasiKinerja string Duration in HH:MM format.
+menitKinerja integer Duration in minutes.
+apv string Approval status (P, A, R).
+tupoksi string Task responsibility.
+periodeKinerja string Performance period (e.g., "March 2025").
+target integer Target value for the performance.
+satuanTarget string Unit of the target (e.g., "units").
+NIP string User identifier (e.g., employee ID).
+stsDel boolean Soft delete flag (0 = active, 1 = deleted).
+Setup Instructions
+Clone the Repository
 
-## Laravel Sponsors
+Install Dependencies
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Set Up Environment
 
-### Premium Partners
+Copy .env.example to .env and configure database and other settings.
+Run Migrations
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+Run the Application
 
-## Contributing
+Create Storage Link
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Notes
+Ensure the AdminMiddleware is applied to admin-only routes.
+Use the filterByApv method to retrieve performances based on apv, month, and year.
