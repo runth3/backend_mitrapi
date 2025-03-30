@@ -10,6 +10,13 @@ class EnsureApiAuthenticated
 {
     public function handle(Request $request, Closure $next)
     {
+        \Log::info('Middleware: EnsureApiAuthenticated - Start', [
+            'url' => $request->url(),
+            'method' => $request->method(),
+            'headers' => $request->headers->all(),
+            'body' => $request->all(),
+        ]);
+
         $token = $request->bearerToken();
         \Log::info('Checking token', ['token' => $token]);
 
