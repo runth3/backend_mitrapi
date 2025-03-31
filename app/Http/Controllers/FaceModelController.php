@@ -66,6 +66,26 @@ class FaceModelController extends Controller
     }
 
     /**
+     * Get the active face model for the authenticated user.
+     */
+    public function getActive(Request $request)
+    {
+        $user = $request->user();
+
+        // Retrieve the latest active face model for the user
+        $faceModel = FaceModel::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->latest('updated_at') // Sort by the most recently updated active model
+            ->first();
+
+        if (!$faceModel) {
+            return response()->json(['message' => 'No active face model found'], 404);
+        }
+
+        return response()->json($faceModel);
+    }
+
+    /**
      * Delete a face model.
      */
     public function destroy(Request $request, $id)

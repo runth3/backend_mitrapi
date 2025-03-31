@@ -64,8 +64,8 @@ class User extends Authenticatable
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
-    public function dataPegawai()
+    public function dataPegawaiAbsen()
     {
-        return $this->hasOne(\App\Models\DataPegawai::class, 'nip', 'username');
+        return $this->hasOne(DataPegawaiAbsen::class, 'nip', 'username'); // Assuming 'nip' in DataPegawaiAbsen matches 'username' in User
     }
 }
