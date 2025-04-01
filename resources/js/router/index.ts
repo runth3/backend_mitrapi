@@ -1,8 +1,10 @@
-import { createRouter, createWebHistory } from "vue-router";
-import Login from "../views/Login.vue";
-import Dashboard from "../views/Dashboard.vue";
+// filepath: /Users/randihartono/Desktop/src/mitrapi_xg/laravel/resources/js/router/index.ts
+import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
+import Login from "../views/login.vue";
+import Dashboard from "../views/dashboard.vue";
 
-const routes = [
+// Define routes with TypeScript types
+const routes: Array<RouteRecordRaw> = [
     {
         path: "/",
         name: "Login",

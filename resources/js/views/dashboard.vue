@@ -1,45 +1,53 @@
+<!-- filepath: /Users/randihartono/Desktop/src/mitrapi_xg/laravel/resources/js/views/dashboard.vue -->
 <template>
-    <v-container>
-        <v-app-bar app color="primary" dark>
-            <v-toolbar-title>Admin Dashboard</v-toolbar-title>
-            <v-spacer></v-spacer>
-            <v-btn @click="logout" color="secondary">Logout</v-btn>
-        </v-app-bar>
-        <v-main>
-            <v-container>
-                <h1>Welcome to the Admin Dashboard</h1>
-            </v-container>
-        </v-main>
-    </v-container>
+    <default-layout title="Dashboard" :menu-items="menuItems" @logout="logout">
+        <v-row>
+            <v-col>
+                <v-card>
+                    <v-card-title>Welcome to the Dashboard</v-card-title>
+                    <v-card-text>
+                        This is a simple dashboard page. Customize it as needed.
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+    </default-layout>
 </template>
 
-<script>
-import axios from "axios";
+<script lang="ts">
+import { defineComponent } from "vue";
+import DefaultLayout from "../layouts/DefaultLayout.vue";
 
-export default {
+interface MenuItem {
+    title: string;
+    icon: string;
+    path: string;
+}
+
+export default defineComponent({
+    name: "Dashboard",
+    components: {
+        DefaultLayout,
+    },
+    data() {
+        return {
+            menuItems: [
+                {
+                    title: "Dashboard",
+                    icon: "mdi-view-dashboard",
+                    path: "/dashboard",
+                },
+                { title: "News", icon: "mdi-newspaper", path: "/news" },
+                { title: "Users", icon: "mdi-account-group", path: "/users" },
+                { title: "Profiles", icon: "mdi-account", path: "/profiles" },
+            ] as MenuItem[],
+        };
+    },
     methods: {
-        async logout() {
-            try {
-                // Call the logout API
-                await axios.post("/api/auth/logout");
-
-                // Remove the token from localStorage
-                localStorage.removeItem("auth_token");
-                delete axios.defaults.headers.common["Authorization"];
-
-                // Redirect to the login page
-                this.$router.push({ name: "Login" });
-            } catch (err) {
-                console.error(
-                    "Logout failed:",
-                    err.response?.data?.message || err.message
-                );
-            }
+        logout() {
+            localStorage.removeItem("auth_token");
+            this.$router.push({ name: "Login" });
         },
     },
-};
+});
 </script>
-
-<style scoped>
-/* Add custom styles if needed */
-</style>
