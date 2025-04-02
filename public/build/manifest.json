@@ -1,0 +1,74 @@
+{
+  "node_modules/@mdi/font/fonts/materialdesignicons-webfont.eot": {
+    "file": "assets/materialdesignicons-webfont-CSr8KVlo.eot",
+    "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.eot"
+  },
+  "node_modules/@mdi/font/fonts/materialdesignicons-webfont.ttf": {
+    "file": "assets/materialdesignicons-webfont-B7mPwVP_.ttf",
+    "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.ttf"
+  },
+  "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff": {
+    "file": "assets/materialdesignicons-webfont-PXm3-2wK.woff",
+    "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff"
+  },
+  "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff2": {
+    "file": "assets/materialdesignicons-webfont-Dp5v-WZN.woff2",
+    "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff2"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-_iFNZAUE.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.ts": {
+    "file": "assets/app-B2iXRY-s.js",
+    "name": "app",
+    "src": "resources/js/app.ts",
+    "isEntry": true,
+    "dynamicImports": [
+      "resources/js/views/news-detail.vue",
+      "resources/js/views/create-news.vue",
+      "resources/js/views/users.vue",
+      "resources/js/views/profile.vue"
+    ],
+    "css": [
+      "assets/app-DkhziVYM.css"
+    ]
+  },
+  "resources/js/views/create-news.vue": {
+    "file": "assets/create-news-CwA6KvKz.js",
+    "name": "create-news",
+    "src": "resources/js/views/create-news.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.ts"
+    ]
+  },
+  "resources/js/views/news-detail.vue": {
+    "file": "assets/news-detail-wWCGwvKm.js",
+    "name": "news-detail",
+    "src": "resources/js/views/news-detail.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.ts"
+    ]
+  },
+  "resources/js/views/profile.vue": {
+    "file": "assets/profile-DMZuwg5r.js",
+    "name": "profile",
+    "src": "resources/js/views/profile.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.ts"
+    ]
+  },
+  "resources/js/views/users.vue": {
+    "file": "assets/users-Cbp5-GWB.js",
+    "name": "users",
+    "src": "resources/js/views/users.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.ts"
+    ]
+  }
+}
