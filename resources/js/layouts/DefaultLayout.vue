@@ -25,39 +25,16 @@
                     <v-divider></v-divider>
                     <v-list-item @click="handleLogout">
                         <v-list-item-title>Logout</v-list-item-title>
-                        <v-list-item-icon>
+                        <template v-slot:prepend>
                             <v-icon>mdi-logout</v-icon>
-                        </v-list-item-icon>
+                        </template>
                     </v-list-item>
                 </v-list>
             </v-menu>
         </v-app-bar>
 
-        <!-- Navigation Drawer -->
-        <v-navigation-drawer v-model="drawer" app>
-            <v-list-item>
-                <v-list-item-content>
-                    <v-list-item-title class="text-h6">
-                        Menu
-                    </v-list-item-title>
-                </v-list-item-content>
-            </v-list-item>
-
-            <v-divider></v-divider>
-
-            <v-list density="compact" nav>
-                <v-list-item
-                    v-for="item in menuItems"
-                    :key="item.title"
-                    :to="item.path"
-                    :prepend-icon="item.icon"
-                    :title="item.title"
-                    :value="item.title"
-                    @click="handleNavigation(item)"
-                    :active="currentRoute === item.path"
-                ></v-list-item>
-            </v-list>
-        </v-navigation-drawer>
+        <!-- Sidebar -->
+        <Sidebar :menu-items="menuItems" v-model="drawer" />
 
         <!-- Main Content -->
         <v-main>
@@ -70,6 +47,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import Sidebar from "@/components/Sidebar.vue";
 
 interface MenuItem {
     title: string;
@@ -79,6 +57,9 @@ interface MenuItem {
 
 export default defineComponent({
     name: "DefaultLayout",
+    components: {
+        Sidebar,
+    },
     props: {
         title: {
             type: String,
@@ -104,21 +85,11 @@ export default defineComponent({
     data() {
         return {
             drawer: true,
-            currentRoute: this.$route.path,
         };
     },
     methods: {
-        handleNavigation(item: MenuItem) {
-            this.currentRoute = item.path;
-            this.$router.push(item.path);
-        },
         handleLogout() {
             this.$emit("logout");
-        },
-    },
-    watch: {
-        $route(to) {
-            this.currentRoute = to.path;
         },
     },
 });
@@ -126,10 +97,10 @@ export default defineComponent({
 
 <style scoped>
 .v-navigation-drawer {
-    background-color: var(--v-background);
+    background-color: var(--v-theme-background);
 }
 
 .v-list-item--active {
-    background-color: var(--v-primary-lighten-2);
+    background-color: var(--v-theme-primary-lighten-2);
 }
 </style>

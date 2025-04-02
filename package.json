@@ -6,6 +6,7 @@
         "dev": "vite"
     },
     "devDependencies": {
+        "@types/lodash": "^4.17.16",
         "autoprefixer": "^10.4.20",
         "axios": "^1.7.4",
         "concurrently": "^9.0.1",
@@ -17,10 +18,12 @@
         "vite": "^6.0.11"
     },
     "dependencies": {
+        "@mdi/font": "^7.4.47",
         "@types/node": "^22.13.14",
         "@vitejs/plugin-vue": "^5.2.3",
         "@vue/runtime-core": "^3.5.13",
         "bootstrap": "^5.3.3",
+        "lodash": "^4.17.21",
         "typescript": "^5.8.2",
         "vue": "^3.3.4",
         "vue-router": "^4.5.0",

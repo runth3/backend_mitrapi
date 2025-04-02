@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 class NewsController extends Controller
 {
+    public function index(Request $request)
+    {
+        return News::orderBy('created_at', 'desc')
+            ->paginate($request->input('per_page', 20));
+    }
     public function latest()
     {
         $news = News::with('user')->latest()->take(5)->get();

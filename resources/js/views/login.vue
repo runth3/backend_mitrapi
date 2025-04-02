@@ -25,11 +25,24 @@
                     ></BaseInput>
 
                     <!-- Login Button -->
-                    <BaseButton type="submit">Login</BaseButton>
+                    <BaseButton
+                        type="submit"
+                        :loading="loading"
+                        :disabled="loading"
+                    >
+                        Login
+                    </BaseButton>
                 </v-form>
 
                 <!-- Error Alert -->
-                <v-alert v-if="error" type="error" class="mt-4" dense>
+                <v-alert
+                    v-if="error"
+                    type="error"
+                    class="mt-4"
+                    dense
+                    closable
+                    @click:close="error = null"
+                >
                     {{ error }}
                 </v-alert>
             </v-card-text>
@@ -53,27 +66,51 @@ export default defineComponent({
         return {
             username: "",
             password: "",
-            error: null,
+            error: null as string | null,
+            loading: false,
         };
     },
     methods: {
         async handleLogin() {
-            try {
-                const response = await axios.post("/api/auth/login", {
-                    username: this.username,
-                    password: this.password,
-                });
+            this.loading = true;
+            this.error = null;
 
-                // Save the token and redirect to the dashboard
-                localStorage.setItem("auth_token", response.data.access_token);
-                axios.defaults.headers.common[
-                    "Authorization"
-                ] = `Bearer ${response.data.access_token}`;
-                this.$router.push({ name: "Dashboard" });
+            try {
+                const response = await axios.post(
+                    "/api/auth/login",
+                    {
+                        username: this.username,
+                        password: this.password,
+                    },
+                    {
+                        headers: {
+                            Accept: "application/json",
+                            "Content-Type": "application/json",
+                        },
+                    }
+                );
+
+                if (response.data.access_token) {
+                    // Save the token
+                    localStorage.setItem("token", response.data.access_token);
+
+                    // Set default authorization header for future requests
+                    axios.defaults.headers.common[
+                        "Authorization"
+                    ] = `Bearer ${response.data.access_token}`;
+
+                    // Redirect to dashboard
+                    this.$router.push({ name: "Dashboard" });
+                } else {
+                    this.error = "Invalid response from server";
+                }
             } catch (err: any) {
+                console.error("Login error:", err);
                 this.error =
                     err.response?.data?.message ||
-                    "Login failed. Please try again.";
+                    "Login failed. Please check your credentials and try again.";
+            } finally {
+                this.loading = false;
             }
         },
     },

@@ -1,4 +1,3 @@
-<!-- filepath: /Users/randihartono/Desktop/src/mitrapi_xg/laravel/resources/js/views/dashboard.vue -->
 <template>
     <default-layout title="Dashboard" :menu-items="menuItems" @logout="logout">
         <v-row>
@@ -16,7 +15,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import DefaultLayout from "../layouts/DefaultLayout.vue";
+import DefaultLayout from "@/layouts/DefaultLayout.vue";
 
 interface MenuItem {
     title: string;

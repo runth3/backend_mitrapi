@@ -9,6 +9,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\VersionController;
 use App\Http\Controllers\FaceModelController;
+use App\Http\Controllers\UserController;
 
 // Public routes
 Route::post('auth/login', [AuthController::class, 'login'])->name('login');
@@ -67,7 +68,16 @@ Route::middleware('api.auth')->group(function () {
 Route::middleware(['api.auth', 'admin'])->group(function () {
     Route::delete('/face/models/{id}', [FaceModelController::class, 'destroy']); // Admin-only route
      
-    Route::post('/news', [NewsController::class, 'store']); // Create news
-    Route::put('/news/{id}', [NewsController::class, 'update']); // Update news
+    // News management routes
+    Route::get('/news', [NewsController::class, 'index']); // List all news
+    Route::post('/news', [NewsController::class, 'store']); // Create news 
+    Route::put('/news/{id}', [NewsController::class, 'update']);
     Route::delete('/news/{id}', [NewsController::class, 'destroy']); // Delete news
+
+    // User management
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
+    Route::put('/users/{id}', [UserController::class, 'update']);
+    Route::delete('/users/{id}', [UserController::class, 'destroy']);
 });
