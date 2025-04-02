@@ -96,9 +96,10 @@ class UserController extends Controller
     /**
      * Display the specified user.
      */
-    public function show(User $user)
+    public function show($id)
     {
-        return response()->json($user);
+        $news = User::findOrFail($id);
+        return response()->json($news);
     }
 
     /**

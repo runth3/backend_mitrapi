@@ -25,6 +25,7 @@
 import { defineComponent } from "vue";
 import axios from "axios";
 import DefaultLayout from "../layouts/DefaultLayout.vue";
+import { menuItems } from "../config/menu";
 
 interface NewsDetail {
     id: number;
@@ -41,16 +42,7 @@ export default defineComponent({
     data() {
         return {
             news: {} as NewsDetail,
-            menuItems: [
-                {
-                    title: "Dashboard",
-                    icon: "mdi-view-dashboard",
-                    path: "/dashboard",
-                },
-                { title: "News", icon: "mdi-newspaper", path: "/news" },
-                { title: "Users", icon: "mdi-account-group", path: "/users" },
-                { title: "Profiles", icon: "mdi-account", path: "/profiles" },
-            ],
+            menuItems,
         };
     },
     methods: {

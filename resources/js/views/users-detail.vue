@@ -1,9 +1,13 @@
 <template>
-    <default-layout title="Profile" :menu-items="menuItems" @logout="logout">
+    <default-layout
+        title="User Detail"
+        :menu-items="menuItems"
+        @logout="logout"
+    >
         <v-row>
             <v-col cols="12" md="6" offset-md="3">
                 <v-card>
-                    <v-card-title>Profile Settings</v-card-title>
+                    <v-card-title>User Detail Settings</v-card-title>
                     <v-card-text>
                         <v-progress-linear
                             v-if="loading"
@@ -15,17 +19,17 @@
                             v-else
                             ref="form"
                             v-model="valid"
-                            @submit.prevent="saveProfile"
+                            @submit.prevent="saveUsersDetail"
                         >
                             <v-text-field
-                                v-model="profile.name"
+                                v-model="UsersDetail.name"
                                 label="Name"
                                 :rules="[(v) => !!v || 'Name is required']"
                                 required
                             ></v-text-field>
 
                             <v-text-field
-                                v-model="profile.email"
+                                v-model="UsersDetail.email"
                                 label="Email"
                                 :rules="[
                                     (v) => !!v || 'Email is required',
@@ -37,7 +41,7 @@
                             ></v-text-field>
 
                             <v-text-field
-                                v-model="profile.current_password"
+                                v-model="UsersDetail.current_password"
                                 label="Current Password"
                                 type="password"
                                 :rules="[
@@ -49,7 +53,7 @@
                             ></v-text-field>
 
                             <v-text-field
-                                v-model="profile.new_password"
+                                v-model="UsersDetail.new_password"
                                 label="New Password"
                                 type="password"
                                 :rules="[
@@ -61,13 +65,13 @@
                             ></v-text-field>
 
                             <v-text-field
-                                v-model="profile.new_password_confirmation"
+                                v-model="UsersDetail.new_password_confirmation"
                                 label="Confirm New Password"
                                 type="password"
                                 :rules="[
                                     (v) =>
                                         !v ||
-                                        v === profile.new_password ||
+                                        v === UsersDetail.new_password ||
                                         'Passwords must match',
                                 ]"
                             ></v-text-field>
@@ -94,7 +98,7 @@ import axios from "axios";
 import DefaultLayout from "../layouts/DefaultLayout.vue";
 import { menuItems } from "../config/menu";
 
-interface Profile {
+interface UsersDetail {
     name: string;
     email: string;
     current_password?: string;
@@ -103,7 +107,7 @@ interface Profile {
 }
 
 export default defineComponent({
-    name: "Profile",
+    name: "Users Detail",
     components: {
         DefaultLayout,
     },
@@ -113,20 +117,21 @@ export default defineComponent({
             loading: false,
             saving: false,
             valid: false,
-            profile: {
+            UsersDetail: {
                 name: "",
                 email: "",
                 current_password: "",
                 new_password: "",
                 new_password_confirmation: "",
-            } as Profile,
+            } as UsersDetail,
+            userId: null as number | null,
         };
     },
     methods: {
-        async fetchProfile() {
+        async fetchUsersDetail() {
             try {
                 this.loading = true;
-                const response = await axios.get("/api/profile/me", {
+                const response = await axios.get(`/api/users/${this.userId}`, {
                     headers: {
                         Accept: "application/json",
                         "Content-Type": "application/json",
@@ -135,20 +140,20 @@ export default defineComponent({
                         )}`,
                     },
                 });
-                this.profile.name = response.data.name;
-                this.profile.email = response.data.email;
+                this.UsersDetail.name = response.data.name;
+                this.UsersDetail.email = response.data.email;
             } catch (error) {
-                console.error("Failed to fetch profile:", error);
+                console.error("Failed to fetch UsersDetail:", error);
             } finally {
                 this.loading = false;
             }
         },
-        async saveProfile() {
+        async saveUsersDetail() {
             if (!this.valid) return;
 
             try {
                 this.saving = true;
-                await axios.put("/api/profile/", this.profile, {
+                await axios.put(`/api/users/${this.userId}`, this.UsersDetail, {
                     headers: {
                         Accept: "application/json",
                         "Content-Type": "application/json",
@@ -158,11 +163,11 @@ export default defineComponent({
                     },
                 });
                 // Clear password fields after successful save
-                this.profile.current_password = "";
-                this.profile.new_password = "";
-                this.profile.new_password_confirmation = "";
+                this.UsersDetail.current_password = "";
+                this.UsersDetail.new_password = "";
+                this.UsersDetail.new_password_confirmation = "";
             } catch (error) {
-                console.error("Failed to save profile:", error);
+                console.error("Failed to save Users Detail:", error);
             } finally {
                 this.saving = false;
             }
@@ -173,7 +178,13 @@ export default defineComponent({
         },
     },
     mounted() {
-        this.fetchProfile();
+        // Get the user ID from the route parameters
+        this.userId = parseInt(this.$route.params.id as string);
+        if (this.userId) {
+            this.fetchUsersDetail();
+        } else {
+            console.error("User ID not found in route parameters.");
+        }
     },
 });
 </script>

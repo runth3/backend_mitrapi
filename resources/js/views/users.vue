@@ -41,6 +41,7 @@
                 @update:options="handleTableUpdate"
                 class="elevation-1"
                 must-sort
+                item-key="id"
             >
                 <!-- Created At Column -->
                 <template v-slot:item.created_at="{ item }">
@@ -59,10 +60,18 @@
 
                 <!-- Actions Column -->
                 <template v-slot:item.actions="{ item }">
-                    <v-icon small class="mr-2" @click="editUser(item)">
+                    <v-btn
+                        color="primary"
+                        class="mr-2"
+                        @click.stop="viewUser(item)"
+                    >
+                        <v-icon left>mdi-eye</v-icon>
+                        View
+                    </v-btn>
+                    <v-icon small class="mr-2" @click.stop="editUser(item)">
                         mdi-pencil
                     </v-icon>
-                    <v-icon small @click="deleteUser(item)">
+                    <v-icon small @click.stop="deleteUser(item)">
                         mdi-delete
                     </v-icon>
                 </template>
@@ -451,6 +460,9 @@ export default {
                     console.error("Error saving user:", error);
                 }
             }
+        },
+        viewUser(item) {
+            this.$router.push(`/users/${item.id}`);
         },
     },
 
