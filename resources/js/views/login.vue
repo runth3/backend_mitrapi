@@ -104,6 +104,9 @@ export default defineComponent({
                         "Authorization"
                     ] = `Bearer ${response.data.access_token}`;
 
+                    // Fetch user profile
+                    await this.fetchUserProfile();
+
                     // Redirect to dashboard
                     this.$router.push({ name: "Dashboard" });
                 } else {
@@ -116,6 +119,27 @@ export default defineComponent({
                     "Login failed. Please check your credentials and try again.";
             } finally {
                 this.loading = false;
+            }
+        },
+        async fetchUserProfile() {
+            try {
+                const response = await axios.get("/api/profile/me", {
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem(
+                            "token"
+                        )}`,
+                    },
+                });
+                console.log(response.data);
+                // Store user data in local storage
+                localStorage.setItem(
+                    "userData",
+                    JSON.stringify(response.data.user)
+                );
+            } catch (error) {
+                console.error("Failed to fetch user profile:", error);
             }
         },
     },

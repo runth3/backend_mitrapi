@@ -10,8 +10,8 @@
             <v-menu>
                 <template v-slot:activator="{ props }">
                     <v-btn icon v-bind="props">
-                        <v-avatar size="32">
-                            <v-img :src="userAvatar" :alt="userName"></v-img>
+                        <v-avatar size="32" color="grey-darken-1">
+                            <v-icon size="32">mdi-account</v-icon>
                         </v-avatar>
                     </v-btn>
                 </template>
@@ -69,28 +69,31 @@ export default defineComponent({
             type: Array as () => MenuItem[],
             required: true,
         },
-        userName: {
-            type: String,
-            default: "John Doe",
-        },
-        userEmail: {
-            type: String,
-            default: "john@example.com",
-        },
-        userAvatar: {
-            type: String,
-            default: "https://cdn.vuetifyjs.com/images/john.jpg",
-        },
     },
     data() {
         return {
             drawer: true,
+            userName: "",
+            userEmail: "",
         };
     },
     methods: {
         handleLogout() {
+            localStorage.removeItem("token");
+            localStorage.removeItem("userData");
             this.$emit("logout");
         },
+        loadUserData() {
+            const userData = localStorage.getItem("userData");
+            if (userData) {
+                const parsedUserData = JSON.parse(userData);
+                this.userName = parsedUserData.name;
+                this.userEmail = parsedUserData.email;
+            }
+        },
+    },
+    mounted() {
+        this.loadUserData();
     },
 });
 </script>

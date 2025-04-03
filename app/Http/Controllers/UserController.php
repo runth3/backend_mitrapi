@@ -3,6 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\DataPegawaiSimpeg;
+use App\Models\DataPegawaiAbsen;
+use App\Models\DataPegawaiEkinerja;
+use App\Models\UserAbsen;
+use App\Models\UserEkinerja;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -98,8 +103,37 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        $news = User::findOrFail($id);
-        return response()->json($news);
+        $user = User::findOrFail($id); 
+
+        $userAbsen = UserAbsen::where('name', $user->username)->first();
+        $userEkinerja = UserEkinerja::where('UID', $user->username)->first();
+        $dataPegawaiAbsen = DataPegawaiAbsen::where('nip', $user->username)->first();
+        $dataPegawaiEkinerja = DataPegawaiEkinerja::where('nip', $user->username)->first();
+        $dataPegawaiSimpeg = DataPegawaiSimpeg::where('nip', $user->username)->first();
+        $dataPegawaiAbsen = DataPegawaiAbsen::where('nip', $user->username)->first();
+        $dataPegawaiEkinerja = DataPegawaiEkinerja::where('nip', $user->username)->first();
+        $faceModel = $user->faceModel; // Assuming you have a faceModel attribute in your User model
+   // Prepare the response data
+   $response = [
+    'user' => [
+        'name' => $user->name,
+        'username' => $user->username,
+        'email' => $user->email,
+        'phone' => $user->phone,
+        'dob' => $user->dob,
+        'address' => $user->address,
+        'created_at' => $user->created_at,
+        'updated_at' => $user->updated_at,
+    ],
+    'dataPegawaiSimpeg' => $dataPegawaiSimpeg ? $dataPegawaiSimpeg->toArray() : null,
+    'dataPegawaiAbsen' => $dataPegawaiAbsen ? $dataPegawaiAbsen->toArray() : null,
+    'dataPegawaiEkinerja' => $dataPegawaiEkinerja ? $dataPegawaiEkinerja->toArray() : null,
+    'userAbsen' => $userAbsen ? $userAbsen->toArray() : null,
+    'userEkinerja' => $userEkinerja ? $userEkinerja->toArray() : null,
+    'faceModel' => $faceModel ? $faceModel->toArray() : null,
+    ];      
+
+         return response()->json($response);
     }
 
     /**
