@@ -42,15 +42,18 @@ Route::middleware('api.auth')->group(function () {
     // Versi Aplikasi
     Route::get('/version/check', [VersionController::class, 'checkVersion']);
 
-    // Model Wajah
+
    
-    Route::get('/face-models', [FaceModelController::class, 'index']); // List all face models
-    Route::post('/face-models', [FaceModelController::class, 'store']); // Upload a new face model
-    Route::get('/face-models/active', [FaceModelController::class, 'getActive']); // Get the latest active face model
-    Route::get('/face-models/{id}', [FaceModelController::class, 'show']); // Show a specific face model
-    Route::put('/face-models/{id}/set-active', [FaceModelController::class, 'setActive']); // Set a face model as active
-    Route::delete('/face-models/{id}', [FaceModelController::class, 'destroy']); // Delete a face model
-  
+   // Model Wajah
+   Route::prefix('face-model')->group(function () {
+        Route::get('/', [FaceModelController::class, 'index']); // List all face models
+        Route::post('/', [FaceModelController::class, 'store']); // Upload a new face model
+        Route::get('/active', [FaceModelController::class, 'getActive']); // Get the latest active face model
+        Route::get('/{id}', [FaceModelController::class, 'show']); // Show a specific face model
+        Route::put('/{id}/set-active', [FaceModelController::class, 'setActive']); // Set a face model as active
+        Route::delete('/{id}', [FaceModelController::class, 'destroy']); // Delete a face model
+        Route::get('/user/{userId}', [FaceModelController::class, 'getByUserId']);
+    });
     // Push Notification
     // Route::post('/notifications/send', [NotificationController::class, 'send']); // Belum aktif
 

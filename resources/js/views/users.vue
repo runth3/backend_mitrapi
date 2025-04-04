@@ -31,8 +31,6 @@
                 v-model:options="options"
                 :items-per-page="options.itemsPerPage"
                 :page="options.page"
-                :sort-by="options.sortBy"
-                :sort-desc="options.sortDesc"
                 :footer-props="{
                     'items-per-page-options': [10, 25, 50],
                     showFirstLastPage: true,
@@ -41,6 +39,7 @@
                 @update:options="handleTableUpdate"
                 class="elevation-1"
                 must-sort
+                item-key="id"
             >
                 <!-- Created At Column -->
                 <template v-slot:item.created_at="{ item }">
@@ -59,10 +58,19 @@
 
                 <!-- Actions Column -->
                 <template v-slot:item.actions="{ item }">
-                    <v-icon small class="mr-2" @click="editUser(item)">
+                    <v-icon
+                        small
+                        class="mr-2"
+                        @click.stop="viewUser(item)"
+                        color="primary"
+                    >
                         mdi-pencil
                     </v-icon>
-                    <v-icon small @click="deleteUser(item)">
+                    <v-icon
+                        small
+                        @click.stop="deleteUser(item)"
+                        color="primary"
+                    >
                         mdi-delete
                     </v-icon>
                 </template>
@@ -112,6 +120,40 @@
                                         :rules="[
                                             (v) =>
                                                 !!v || 'Username is required',
+                                        ]"
+                                    ></v-text-field>
+                                </v-col>
+                                <v-col cols="12" v-if="editedIndex === -1">
+                                    <v-text-field
+                                        v-model="editedItem.password"
+                                        label="Password"
+                                        type="password"
+                                        :error-messages="
+                                            validationErrors.password
+                                        "
+                                        :rules="[
+                                            (v) =>
+                                                !!v || 'Password is required',
+                                        ]"
+                                    ></v-text-field>
+                                </v-col>
+                                <v-col cols="12" v-if="editedIndex === -1">
+                                    <v-text-field
+                                        v-model="
+                                            editedItem.password_confirmation
+                                        "
+                                        label="Password Confirmation"
+                                        type="password"
+                                        :error-messages="
+                                            validationErrors.password_confirmation
+                                        "
+                                        :rules="[
+                                            (v) =>
+                                                !!v ||
+                                                'Password Confirmation is required',
+                                            (v) =>
+                                                v === editedItem.password ||
+                                                'Password confirmation does not match',
                                         ]"
                                     ></v-text-field>
                                 </v-col>
@@ -191,8 +233,6 @@ export default {
         loading: false,
         dialog: false,
         deleteDialog: false,
-        lastSortBy: null,
-        lastSortDesc: 1,
         options: {
             page: 1,
             itemsPerPage: 10,
@@ -204,18 +244,8 @@ export default {
         },
         totalUsers: 0,
         headers: [
-            {
-                title: "Name",
-                key: "name",
-                align: "start",
-                sortable: true,
-            },
-            {
-                title: "Email",
-                key: "email",
-                align: "start",
-                sortable: true,
-            },
+            { title: "Name", key: "name", align: "start", sortable: true },
+            { title: "Email", key: "email", align: "start", sortable: true },
             {
                 title: "Username",
                 key: "username",
@@ -228,12 +258,7 @@ export default {
                 align: "start",
                 sortable: true,
             },
-            {
-                title: "Admin",
-                key: "is_admin",
-                align: "start",
-                sortable: true,
-            },
+            { title: "Admin", key: "is_admin", align: "start", sortable: true },
             {
                 title: "Actions",
                 key: "actions",
@@ -247,12 +272,16 @@ export default {
             name: "",
             email: "",
             username: "",
+            password: "",
+            password_confirmation: "",
             is_admin: false,
         },
         defaultItem: {
             name: "",
             email: "",
             username: "",
+            password: "",
+            password_confirmation: "",
             is_admin: false,
         },
         userToDelete: null,
@@ -269,69 +298,38 @@ export default {
     },
 
     methods: {
-        handleTableUpdate(newOptions) {
-            // Ensure we have valid options with safe defaults
-            this.options = {
-                ...this.options,
-                page: newOptions.page || 1,
-                itemsPerPage: newOptions.itemsPerPage || 10,
-                sortBy: [],
-                sortDesc: [],
-                groupBy: [],
-                groupDesc: [],
-                multiSort: false,
-            };
-
-            // Handle sorting separately
-            if (newOptions.sortBy && newOptions.sortBy.length > 0) {
-                this.options.sortBy = newOptions.sortBy;
-                this.options.sortDesc = newOptions.sortDesc;
-            }
-
-            this.fetchUsers();
-        },
         showSnackbar(text, color = "success") {
             this.snackbarText = text;
             this.snackbarColor = color;
             this.snackbar = true;
         },
-
+        handleTableUpdate(newOptions) {
+            this.options = {
+                ...this.options,
+                page: newOptions.page || 1,
+                itemsPerPage: newOptions.itemsPerPage || 10,
+                sortBy: Array.isArray(newOptions.sortBy)
+                    ? newOptions.sortBy
+                    : this.options.sortBy || [],
+                sortDesc: Array.isArray(newOptions.sortDesc)
+                    ? newOptions.sortDesc
+                    : this.options.sortDesc || [],
+            };
+            this.fetchUsers();
+        },
         async fetchUsers() {
             if (this.loading) return;
 
             this.loading = true;
             try {
-                const {
-                    page = 1,
-                    itemsPerPage = 10,
-                    sortBy = [],
-                    sortDesc = [],
-                } = this.options;
+                const { page, itemsPerPage, sortBy = [] } = this.options;
 
-                // Extract sort parameters
-                let sort_by = "created_at";
-                let sort_desc = 1; // default to descending
+                console.log("fetchUsers options:", { sortBy });
 
-                if (sortBy.length > 0) {
-                    // Extract just the column name if sortBy contains an object
-                    sort_by =
-                        typeof sortBy[0] === "object"
-                            ? sortBy[0].key
-                            : sortBy[0];
-
-                    // Check if this is a new sort or toggling existing sort
-                    if (this.lastSortBy !== sort_by) {
-                        // New column sort - start with descending (1)
-                        sort_desc = 1;
-                        this.lastSortBy = sort_by;
-                    } else {
-                        // Toggle sort direction
-                        sort_desc = this.lastSortDesc === 1 ? 0 : 1;
-                    }
-
-                    // Store the current sort direction
-                    this.lastSortDesc = sort_desc;
-                }
+                const sort_by =
+                    sortBy.length > 0 ? sortBy[0].key : "created_at";
+                const sort_desc =
+                    sortBy.length > 0 ? sortBy[0].order === "desc" : false;
 
                 const response = await axios.get("/api/users", {
                     headers: {
@@ -344,7 +342,7 @@ export default {
                         per_page: itemsPerPage,
                         search: this.search,
                         sort_by,
-                        sort_desc,
+                        sort_desc: sort_desc ? 1 : 0,
                     },
                 });
 
@@ -369,12 +367,6 @@ export default {
         openAddDialog() {
             this.editedIndex = -1;
             this.editedItem = { ...this.defaultItem };
-            this.dialog = true;
-        },
-
-        editUser(item) {
-            this.editedIndex = this.users.indexOf(item);
-            this.editedItem = { ...item };
             this.dialog = true;
         },
 
@@ -420,15 +412,26 @@ export default {
                     "Content-Type": "application/json",
                 };
 
+                const data = {
+                    name: this.editedItem.name,
+                    email: this.editedItem.email,
+                    username: this.editedItem.username,
+                    is_admin: this.editedItem.is_admin,
+                };
+
+                if (this.editedIndex === -1) {
+                    data.password = this.editedItem.password;
+                    data.password_confirmation =
+                        this.editedItem.password_confirmation;
+                }
+
                 if (this.editedIndex > -1) {
-                    await axios.put(
-                        `/api/users/${this.editedItem.id}`,
-                        this.editedItem,
-                        { headers }
-                    );
+                    await axios.put(`/api/users/${this.editedItem.id}`, data, {
+                        headers,
+                    });
                     this.showSnackbar("User updated successfully");
                 } else {
-                    await axios.post("/api/users", this.editedItem, {
+                    await axios.post("/api/users", data, {
                         headers,
                     });
                     this.showSnackbar("User created successfully");
@@ -451,6 +454,9 @@ export default {
                     console.error("Error saving user:", error);
                 }
             }
+        },
+        viewUser(item) {
+            this.$router.push(`/users/${item.id}`);
         },
     },
 

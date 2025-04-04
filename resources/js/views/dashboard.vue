@@ -16,6 +16,7 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
+import { menuItems } from "../config/menu";
 
 interface MenuItem {
     title: string;
@@ -30,16 +31,7 @@ export default defineComponent({
     },
     data() {
         return {
-            menuItems: [
-                {
-                    title: "Dashboard",
-                    icon: "mdi-view-dashboard",
-                    path: "/dashboard",
-                },
-                { title: "News", icon: "mdi-newspaper", path: "/news" },
-                { title: "Users", icon: "mdi-account-group", path: "/users" },
-                { title: "Profiles", icon: "mdi-account", path: "/profiles" },
-            ] as MenuItem[],
+            menuItems,
         };
     },
     methods: {

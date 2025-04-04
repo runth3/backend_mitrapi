@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-
+use App\Models\DataPegawaiAbsen;
+use App\Models\FaceModel;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -70,5 +71,9 @@ class User extends Authenticatable
     public function dataPegawaiAbsen()
     {
         return $this->hasOne(DataPegawaiAbsen::class, 'nip', 'username'); // Assuming 'nip' in DataPegawaiAbsen matches 'username' in User
+    }
+    public function faceModel()
+    {
+        return $this->hasMany(FaceModel::class, 'user_id', 'id'); // 1 user can have many models - 1 model belongs to 1 user
     }
 }
