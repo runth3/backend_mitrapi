@@ -18,7 +18,7 @@ class EnsureApiAuthenticated
         ]);
 
         $token = $request->bearerToken();
-        \Log::info('Checking token', ['token' => $token]);
+      //  \Log::info('Checking token', ['token' => $token]);
 
         // Check user using Sanctum
         $user = $request->user('sanctum'); // Retrieve user from Sanctum
