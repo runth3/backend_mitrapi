@@ -29,6 +29,9 @@ Route::middleware('api.auth')->group(function () {
 
     // Data Kantor
     Route::get('/office/me', [OfficeController::class, 'me']);
+    Route::get('/office/{id_instansi}', [OfficeController::class, 'showByInstansi']);
+    Route::get('/office/koordinat/{id_instansi}', [OfficeController::class, 'getKoordinatByInstansi']);
+
 
     // Absensi
     Route::get('/attendance/me', [AttendanceController::class, 'me']); // Get current month's attendance
