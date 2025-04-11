@@ -13,6 +13,9 @@ use App\Http\Controllers\UserController;
 
 // Public routes
 Route::post('auth/login', [AuthController::class, 'login'])->name('login');
+ // Versi Aplikasi
+ Route::get('/version/check', [VersionController::class, 'checkVersion']);
+
 
 // Protected routes
 Route::middleware('api.auth')->group(function () {
@@ -39,10 +42,7 @@ Route::middleware('api.auth')->group(function () {
     Route::get('/news/latest', [NewsController::class, 'latest']);
     Route::get('/news/{id}', [NewsController::class, 'show']); // Get a specific news item
 
-    // Versi Aplikasi
-    Route::get('/version/check', [VersionController::class, 'checkVersion']);
-
-
+   
    
    // Model Wajah
    Route::prefix('face-model')->group(function () {
