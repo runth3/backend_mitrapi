@@ -56,7 +56,7 @@ class AttendanceController extends Controller
             return response()->json(['message' => 'User data not found in DataPegawaiAbsen'], 404);
         }
 
-        $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d'); // GMT+7
+        $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d'); // GMT+8
         $currentTime = Carbon::now('Asia/Makassar')->format('Y-m-d H:i:s'); // Full datetime
 
         // Generate a unique id_checkinout
@@ -65,6 +65,8 @@ class AttendanceController extends Controller
         // Check if the user has already checked in today
         $existingCheckin = Attendance::where('nip_pegawai', $user->username)
             ->where('date', $currentDate)
+            ->where('checktype', $request->checktype) 
+            ->where('jenis_absensi', $request->jenis_absensi) // Check for automatic check-in
             ->exists();
 
         if ($existingCheckin) {
@@ -86,11 +88,11 @@ class AttendanceController extends Controller
             'id_profile' => $dataPegawai->id_pegawai,
             'date' => $currentDate,
             'checktime' => $currentTime, // Full datetime
-            'checktype' => 'auto', // Automatic check-in
+            'checktype' => $request->checktype, // Automatic check-in
             'iplog' => $request->ip(), // Automatically capture IP address
             'coordinate' => $request->coordinate, // GPS coordinates
             'altitude' => $request->altitude, // Altitude
-            'jenis_absensi' => 'checkin', // Default type
+            'jenis_absensi' => $request->jenis_absensi, // Default type
             'user_platform' => $request->header('User-Agent'), // Capture user agent
             'browser_name' => 'Android App', // Android app name
             'browser_version' => $request->header('App-Version', '1.0.0'), // App version (default to 1.0.0)
@@ -129,7 +131,9 @@ class AttendanceController extends Controller
         // Check if the user has already checked in on the specified date
         $existingCheckin = Attendance::where('nip_pegawai', $user->username)
             ->where('date', $request->date)
-            ->exists();
+            ->where('checktype', $request->checktype) 
+            ->where('jenis_absensi', $request->jenis_absensi) // Check for automatic check-in
+         ->exists();
 
         if ($existingCheckin) {
             return response()->json(['message' => 'You have already checked in on this date'], 400);
@@ -144,11 +148,11 @@ class AttendanceController extends Controller
             'id_profile' => $dataPegawai->id_pegawai,
             'date' => $request->date,
             'checktime' => $request->checktime, // Full datetime
-            'checktype' => 'manual', // Manual check-in
+          'checktype' => $request->checktype, // Automatic check-in
             'iplog' => $request->ip(), // Automatically capture IP address
             'coordinate' => $request->coordinate, // GPS coordinates
             'altitude' => $request->altitude, // Altitude
-            'jenis_absensi' => 'checkin', // Default type
+            'jenis_absensi' => $request->jenis_absensi, // Default type
             'user_platform' => $request->header('User-Agent'), // Capture user agent
             'browser_name' => 'Android App', // Android app name
             'browser_version' => $request->header('App-Version', '1.0.0'), // App version (default to 1.0.0)
@@ -167,7 +171,7 @@ class AttendanceController extends Controller
         $attendance = Attendance::findOrFail($id);
 
         // Ensure the attendance is a manual check-in
-        if ($attendance->checktype !== 'manual') {
+        if ($attendance->status !== 'N') {
             return response()->json(['message' => 'Only manual check-ins can be approved or rejected'], 400);
         }
 
