@@ -61,13 +61,13 @@ Route::middleware('api.auth')->group(function () {
     // Route::post('/notifications/send', [NotificationController::class, 'send']); // Belum aktif
 
     // Performances
-    Route::get('/performances', [PerformanceController::class, 'index']); // List all performances (not deleted)
-    Route::get('/performances/me', [PerformanceController::class, 'me']); // List all my performances
-    Route::post('/performances/filter', [PerformanceController::class, 'filterByApv']); // Filter by apv
-    Route::post('/performances', [PerformanceController::class, 'store']); // Create a performance
-    Route::get('/performances/{id}', [PerformanceController::class, 'show']); // Show a specific performance
-    Route::put('/performances/{id}', [PerformanceController::class, 'update']); // Update a performance
-    Route::delete('/performances/{id}', [PerformanceController::class, 'destroy']); // Soft delete a performance
+    Route::get('/performance', [PerformanceController::class, 'index']); // List all performances (not deleted)
+    Route::get('/performance/me', [PerformanceController::class, 'me']); // List all my performances
+    Route::post('/performance/filter', [PerformanceController::class, 'filterByApv']); // Filter by apv
+    Route::post('/performance', [PerformanceController::class, 'store']); // Create a performance
+    Route::get('/performance/{id}', [PerformanceController::class, 'show']); // Show a specific performance
+    Route::put('/performance/{id}', [PerformanceController::class, 'update']); // Update a performance
+    Route::delete('/performance/{id}', [PerformanceController::class, 'destroy']); // Soft delete a performance
 });
 
 // Admin-only routes
