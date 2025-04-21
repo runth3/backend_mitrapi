@@ -9,8 +9,8 @@ class UserEkinerja extends Model
 {
     use HasFactory;
 
-    protected $connection = 'mysql_ekin'; // Use the ekinerja database connection
-    protected $table = 'kinerja_user'; // Replace with the actual table name
+    protected $connection = 'mysql_ekin';
+    protected $table = 'kinerja_user';
 
     protected $fillable = [
         'UID',
@@ -37,14 +37,27 @@ class UserEkinerja extends Model
         'last_updated',
     ];
 
-    // Hide sensitive fields from API responses
     protected $hidden = [
         'apv',
-        'password', // Password
+        'password',
     ];
-      // Relationship with DataOfficeEkinerja
-      public function officeEkinerja()
-      {
-          return $this->belongsTo(DataOfficeEkinerja::class, 'opd_id', 'id');
-      }
+
+    public function officeEkinerja()
+    {
+        return $this->belongsTo(DataOfficeEkinerja::class, 'opd_id', 'id');
+    }
+
+    // Catatan: Relasi officeEkinerja diperlukan untuk ProfileController (opsional)
+    // Jika ada relasi lain yang dihilangkan, konfirmasi kebutuhannya
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
+                $model->setTable('ekin_kinerja_user');
+            }
+        });
+    }
 }

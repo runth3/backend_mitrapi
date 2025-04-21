@@ -9,13 +9,14 @@ class DataOfficeKoordinat extends Model
 {
     use HasFactory;
 
-    protected $connection = 'mysql_absen'; // Use the absen database connection
-    protected $table = 'vd_ref_instansi_koordinat'; // Replace with the actual table name
-     protected $primaryKey = 'id_ref_instansi_koordinat';
-    public $incrementing = false; // Karena primary key adalah varchar, bukan auto-increment
-    protected $keyType = 'string'; // Tipe primary key adalah string
+    protected $connection = 'mysql_absen';
+    protected $table = 'vd_ref_instansi_koordinat';
+    protected $primaryKey = 'id_ref_instansi_koordinat';
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
+        'id_ref_instansi_koordinat',
         'id_instansi',
         'koordinat',
         'block_koordinat',
@@ -30,16 +31,29 @@ class DataOfficeKoordinat extends Model
     ];
 
     protected $casts = [
-        'block_koordinat' => 'string', // Enum Y/N
-        'absen_shift' => 'string', // Enum Y/N
+        'block_koordinat' => 'string',
+        'absen_shift' => 'string',
         'cre_on' => 'datetime',
         'upd_on' => 'datetime',
-        'aktif' => 'integer', // 0 = Aktif, 1 = Tidak Aktif
+        'aktif' => 'integer',
     ];
 
-    // Relasi ke instansi (opsional, kalau ada tabel instansi)
     public function instansi()
     {
         return $this->belongsTo(DataOfficeAbsen::class, 'id_instansi', 'id_instansi');
+    }
+
+    // Catatan: Relasi instansi dipertahankan karena diperlukan untuk mengaitkan koordinat dengan kantor
+    // Jika ada relasi lain yang dihilangkan (misalnya ke tabel lain), konfirmasi kebutuhannya
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
+                $model->setTable('absen_vd_ref_instansi_koordinat');
+            }
+        });
     }
 }
