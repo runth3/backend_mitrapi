@@ -5,63 +5,127 @@
         @logout="handleLogout"
     >
         <v-row>
-            <v-col>
-                <v-card class="dashboard-card" elevation="3">
-                    <v-card-title class="text-h5"
-                        >Welcome to the Dashboard</v-card-title
-                    >
+            <!-- Fake Stats Cards -->
+            <v-col cols="12" sm="6" md="4">
+                <BaseCard>
+                    <v-card-title>
+                        <v-icon left color="primary">mdi-account-group</v-icon>
+                        Total Users
+                    </v-card-title>
                     <v-card-text>
-                        This is a simple dashboard page. Customize it as needed.
-                        <div class="mt-4">
-                            <BaseButton
-                                color="error"
-                                prepend-icon="mdi-logout"
-                                rounded="lg"
-                                @click="handleLogout"
-                            >
-                                Logout
-                            </BaseButton>
-                        </div>
+                        <h2 class="text-h4">1,245</h2>
+                        <p class="text-caption">Active users in the system</p>
                     </v-card-text>
-                </v-card>
+                </BaseCard>
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+                <BaseCard>
+                    <v-card-title>
+                        <v-icon left color="primary">mdi-newspaper</v-icon>
+                        Total News
+                    </v-card-title>
+                    <v-card-text>
+                        <h2 class="text-h4">342</h2>
+                        <p class="text-caption">Published news articles</p>
+                    </v-card-text>
+                </BaseCard>
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+                <BaseCard>
+                    <v-card-title>
+                        <v-icon left color="primary"
+                            >mdi-face-recognition</v-icon
+                        >
+                        Total Face Models
+                    </v-card-title>
+                    <v-card-text>
+                        <h2 class="text-h4">789</h2>
+                        <p class="text-caption">Registered face models</p>
+                    </v-card-text>
+                </BaseCard>
+            </v-col>
+            <!-- User Information Card -->
+            <v-col cols="12" md="6">
+                <BaseCard>
+                    <v-card-title>User Information</v-card-title>
+                    <v-card-text>
+                        <p><strong>Name:</strong> {{ userName }}</p>
+                        <p><strong>Email:</strong> {{ userEmail }}</p>
+                        <p>
+                            <strong>Role:</strong>
+                            {{ isAdmin ? "Admin" : "User" }}
+                        </p>
+                    </v-card-text>
+                </BaseCard>
+            </v-col>
+            <!-- Quick Actions Card -->
+            <v-col cols="12" md="6">
+                <BaseCard>
+                    <v-card-title>Quick Actions</v-card-title>
+                    <v-card-text>
+                        <BaseButton
+                            color="primary"
+                            prepend-icon="mdi-newspaper"
+                            to="/news"
+                        >
+                            View News
+                        </BaseButton>
+                        <BaseButton
+                            v-if="isAdmin"
+                            color="primary"
+                            prepend-icon="mdi-account-group"
+                            to="/users"
+                            class="ml-2"
+                        >
+                            Manage Users
+                        </BaseButton>
+                    </v-card-text>
+                </BaseCard>
             </v-col>
         </v-row>
+
+        <!-- Welcome Snackbar -->
+        <BaseSnackbar
+            v-model="showSnackbar"
+            color="success"
+            timeout="5000"
+            location="top right"
+            closable
+        >
+            Welcome to Dashboard, {{ userName }}!
+        </BaseSnackbar>
     </default-layout>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch } from "vue";
+import { defineComponent, computed, watch, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import BaseButton from "@/components/BaseButton.vue";
+import BaseCard from "@/components/BaseCard.vue";
+import BaseSnackbar from "@/components/BaseSnackbar.vue"; // Impor BaseSnackbar
 import { useAuth } from "@/composables/useAuth";
+import { useUser } from "@/composables/useUser";
 import { adminMenuItems, userMenuItems } from "@/config/menu";
-
-interface MenuItem {
-    title: string;
-    icon: string;
-    path: string;
-}
 
 export default defineComponent({
     name: "Dashboard",
     components: {
         DefaultLayout,
         BaseButton,
+        BaseCard,
+        BaseSnackbar, // Tambahkan BaseSnackbar
     },
     setup() {
         const router = useRouter();
         const { logout, isAdmin } = useAuth();
-        const menuItems = ref<MenuItem[]>(
-            isAdmin.value ? adminMenuItems : userMenuItems
-        );
+        const { userName, userEmail } = useUser();
+        const showSnackbar = ref(false);
 
-        // Watch perubahan isAdmin untuk memperbarui menu
-        watch(isAdmin, (newValue) => {
-            menuItems.value = newValue ? adminMenuItems : userMenuItems;
+        const menuItems = computed(() => {
+            return isAdmin.value ? adminMenuItems : userMenuItems;
         });
 
-        // Handle logout
         async function handleLogout() {
             try {
                 await logout();
@@ -71,21 +135,32 @@ export default defineComponent({
             }
         }
 
+        onMounted(() => {
+            showSnackbar.value = true; // Tampilkan snackbar saat halaman dimuat
+        });
+
+        watch(isAdmin, () => {
+            console.log("isAdmin changed:", isAdmin.value);
+        });
+
         return {
             menuItems,
+            userName,
+            userEmail,
+            isAdmin,
             handleLogout,
+            showSnackbar,
         };
     },
 });
 </script>
 
 <style scoped>
-/* Background card dinamis berdasarkan tema */
-:root[data-theme="normal"] .dashboard-card,
-:root[data-theme="singleTone"] .dashboard-card {
-    background-color: rgba(255, 255, 255, 0.9);
+.text-h4 {
+    font-weight: bold;
 }
-:root[data-theme="night"] .dashboard-card {
-    background-color: rgba(46, 46, 46, 0.9); /* #2E2E2E dengan opacity 0.9 */
+
+.text-caption {
+    color: var(--v-theme-on-surface-variant);
 }
 </style>

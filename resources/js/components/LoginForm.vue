@@ -33,7 +33,7 @@
         >
             Login
         </BaseButton>
-        <v-alert
+        <BaseAlert
             v-if="error"
             type="error"
             text-color="on-surface"
@@ -43,7 +43,7 @@
             @click:close="$emit('update:error', null)"
         >
             {{ error }}
-        </v-alert>
+        </BaseAlert>
     </v-form>
 </template>
 
@@ -51,12 +51,14 @@
 import { defineComponent, PropType, ref, watch } from "vue";
 import BaseInput from "@/components/BaseInput.vue";
 import BaseButton from "@/components/BaseButton.vue";
+import BaseAlert from "@/components/BaseAlert.vue";
 
 export default defineComponent({
     name: "LoginForm",
     components: {
         BaseInput,
         BaseButton,
+        BaseAlert,
     },
     props: {
         username: {
