@@ -27,23 +27,37 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::info('Login failed: Validation error', ['errors' => $validator->errors()]);
-            return $this->errorResponse('Invalid input', 400, $validator->errors());
+            \Log::info('Login failed: Validation error', [
+                'errors' => $validator->errors()->toArray(),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
         }
 
-        \Log::info('Login attempt', ['username' => $request->username]);
+        \Log::info('Login attempt', [
+            'username' => $request->username,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
         $user = User::where('username', $request->username)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            \Log::info('Login failed: Invalid credentials');
+            \Log::info('Login failed: Invalid credentials', [
+                'username' => $request->username,
+                'ip' => $request->ip(),
+            ]);
             return $this->errorResponse('Invalid login credentials', 401);
         }
 
         $accessToken = $user->createToken('auth_token')->plainTextToken;
         $refreshToken = $this->generateRefreshToken($user);
 
-        \Log::info('Login success', ['user_id' => $user->id]);
+        \Log::info('Login success', [
+            'user_id' => $user->id,
+            'ip' => $request->ip(),
+        ]);
 
         return $this->successResponse([
             'access_token' => $accessToken,
@@ -51,7 +65,7 @@ class AuthController extends Controller
             'refresh_token' => $refreshToken->token,
             'user' => $user,
             'expires_at' => Carbon::now()->addDays(7)->toIso8601String(),
-        ], 'Login successful');
+        ], 'Login successful', 200);
     }
 
     /**
@@ -64,41 +78,51 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::info('Refresh failed: Validation error', ['errors' => $validator->errors()]);
-            return $this->errorResponse('Invalid input', 400, $validator->errors());
+            \Log::info('Refresh failed: Validation error', [
+                'errors' => $validator->errors()->toArray(),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
         }
 
         $refreshToken = RefreshToken::where('token', $request->refresh_token)->first();
 
         if (!$refreshToken || $refreshToken->expires_at < Carbon::now()) {
-            \Log::info('Refresh failed: Invalid or expired refresh token');
+            \Log::info('Refresh failed: Invalid or expired refresh token', [
+                'ip' => $request->ip(),
+            ]);
             return $this->errorResponse('Invalid or expired refresh token', 401);
         }
 
-        $user = $user = User::find($refreshToken->user_id);
+        $user = User::find($refreshToken->user_id);
 
         if (!$user) {
-            \Log::info('Refresh failed: User not found');
+            \Log::info('Refresh failed: User not found', [
+                'ip' => $request->ip(),
+            ]);
             return $this->errorResponse('User not found', 404);
         }
 
-        // Revoke old access tokens
+        // Revoke old access tokens and refresh token
         $user->tokens()->delete();
+        $refreshToken->delete();
 
-        // Generate new access token
+        // Generate new tokens
         $newAccessToken = $user->createToken('auth_token')->plainTextToken;
+        $newRefreshToken = $this->generateRefreshToken($user);
 
-        // Optionally, extend refresh token expiration or generate new one
-        $newRefreshToken = $this->generateRefreshToken($user, $refreshToken);
-
-        \Log::info('Token refreshed', ['user_id' => $user->id]);
+        \Log::info('Token refreshed', [
+            'user_id' => $user->id,
+            'ip' => $request->ip(),
+        ]);
 
         return $this->successResponse([
             'access_token' => $newAccessToken,
             'token_type' => 'Bearer',
             'refresh_token' => $newRefreshToken->token,
             'expires_at' => Carbon::now()->addDays(7)->toIso8601String(),
-        ], 'Token refreshed successfully');
+        ], 'Token refreshed successfully', 200);
     }
 
     /**
@@ -109,8 +133,13 @@ class AuthController extends Controller
         $user = $request->user();
         $user->tokens()->delete();
         RefreshToken::where('user_id', $user->id)->delete();
-        \Log::info('Logout success', ['user_id' => $user->id]);
-        return $this->successResponse(null, 'Logged out successfully');
+
+        \Log::info('Logout success', [
+            'user_id' => $user->id,
+            'ip' => $request->ip(),
+        ]);
+
+        return $this->successResponse(null, 'Logged out successfully', 200);
     }
 
     /**
@@ -134,36 +163,40 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::info('Change password failed: Validation error', ['errors' => $validator->errors()]);
-            return $this->errorResponse('Invalid input', 400, $validator->errors());
+            \Log::info('Change password failed: Validation error', [
+                'errors' => $validator->errors()->toArray(),
+                'user_id' => $request->user()->id,
+                'ip' => $request->ip(),
+            ]);
+            return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
         }
 
         $user = $request->user();
 
         if (!Hash::check($request->current_password, $user->password)) {
-            \Log::info('Change password failed: Incorrect current password', ['user_id' => $user->id]);
+            \Log::info('Change password failed: Incorrect current password', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+            ]);
             return $this->errorResponse('Current password is incorrect', 400);
         }
 
         $user->password = Hash::make($request->new_password);
         $user->save();
 
-        \Log::info('Change password success', ['user_id' => $user->id]);
-        return $this->successResponse(null, 'Password changed successfully');
+        \Log::info('Change password success', [
+            'user_id' => $user->id,
+            'ip' => $request->ip(),
+        ]);
+
+        return $this->successResponse(null, 'Password changed successfully', 200);
     }
 
     /**
-     * Generate or update a refresh token for the user.
+     * Generate a new refresh token for the user.
      */
-    protected function generateRefreshToken(User $user, RefreshToken $existingToken = null): RefreshToken
+    protected function generateRefreshToken(User $user): RefreshToken
     {
-        if ($existingToken) {
-            // Extend expiration
-            $existingToken->expires_at = Carbon::now()->addDays(30);
-            $existingToken->save();
-            return $existingToken;
-        }
-
         // Limit number of refresh tokens (e.g., max 5 per user)
         $existingTokens = RefreshToken::where('user_id', $user->id)->count();
         if ($existingTokens >= 5) {
