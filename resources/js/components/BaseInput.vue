@@ -1,60 +1,74 @@
 <template>
     <v-text-field
         :model-value="modelValue"
+        :color="color"
         :label="label"
+        :variant="variant"
+        :disabled="disabled"
+        :readonly="readonly"
+        :placeholder="placeholder"
         :type="type"
-        :variant="variant || 'outlined'"
-        :dense="dense !== false"
-        :rounded="rounded !== false"
-        :style="{ minHeight: '56px', minWidth: '300px' }"
-        class="mb-4"
+        :rules="rules"
+        :rounded="rounded"
+        :class="customClass"
         @update:model-value="$emit('update:modelValue', $event)"
-    ></v-text-field>
+        @input="$emit('input', $event)"
+    />
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, PropType } from "vue";
 
 export default defineComponent({
     name: "BaseInput",
     props: {
         modelValue: {
-            type: [String, Number],
-            required: true, // Ensure v-model is always passed
+            type: [String, Number] as PropType<string | number>,
+            default: "",
+        },
+        color: {
+            type: String,
+            default: "primary",
         },
         label: {
             type: String,
-            default: "", // Default label is an empty string
+            default: "",
+        },
+        variant: {
+            type: String as PropType<
+                "filled" | "outlined" | "plain" | "underlined" | "solo"
+            >,
+            default: "outlined",
+        },
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
+        readonly: {
+            type: Boolean,
+            default: false,
+        },
+        placeholder: {
+            type: String,
+            default: "",
         },
         type: {
             type: String,
-            default: "text", // Default type is "text"
+            default: "text",
         },
-        variant: {
-            type: String as () =>
-                | "outlined"
-                | "filled"
-                | "plain"
-                | "underlined"
-                | "solo"
-                | "solo-inverted"
-                | "solo-filled"
-                | undefined,
-            default: "outlined", // Default variant is "outlined"
-        },
-        dense: {
-            type: Boolean,
-            default: true, // Default dense is true
+        customClass: {
+            type: String,
+            default: "",
         },
         rounded: {
-            type: Boolean,
-            default: true, // Default rounded is true
+            type: String as PropType<"0" | "sm" | "md" | "lg" | "xl" | "pill">,
+            default: "lg",
+        },
+        rules: {
+            type: Array as PropType<Array<(v: string) => string | boolean>>,
+            default: () => [],
         },
     },
-    emits: ["update:modelValue"], // Emit event for v-model binding
+    emits: ["update:modelValue", "input"],
 });
 </script>
-
-<style scoped>
-/* Add any custom styles for the input if needed */
-</style>

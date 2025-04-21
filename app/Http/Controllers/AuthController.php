@@ -49,6 +49,7 @@ class AuthController extends Controller
             'access_token' => $accessToken,
             'token_type' => 'Bearer',
             'refresh_token' => $refreshToken->token,
+            'user' => $user,
             'expires_at' => Carbon::now()->addDays(7)->toIso8601String(),
         ], 'Login successful');
     }

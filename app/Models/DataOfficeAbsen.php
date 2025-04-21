@@ -56,7 +56,11 @@ class DataOfficeAbsen extends Model
         static::creating(function ($model) {
             if (app()->environment('testing')) {
                 $model->setConnection('sqlite');
-                $model->setTable('simpeg_vd_ref_instansi');
+            }
+        });
+        static::updating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
             }
         });
     }

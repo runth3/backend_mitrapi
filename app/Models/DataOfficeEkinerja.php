@@ -45,7 +45,11 @@ class DataOfficeEkinerja extends Model
         static::creating(function ($model) {
             if (app()->environment('testing')) {
                 $model->setConnection('sqlite');
-                $model->setTable('ekin_opd');
+            }
+        });
+        static::updating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
             }
         });
     }

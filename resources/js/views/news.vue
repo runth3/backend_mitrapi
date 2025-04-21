@@ -1,5 +1,5 @@
 <template>
-    <default-layout title="News" :menu-items="menuItems" @logout="logout">
+    <default-layout title="News" :menu-items="menuItems" @logout="handleLogout">
         <v-row>
             <v-col cols="12">
                 <news-list
@@ -17,11 +17,13 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, ref, watch } from "vue";
 import axios from "axios";
-import DefaultLayout from "../layouts/DefaultLayout.vue";
-import NewsList, { NewsItem } from "../components/news/NewsList.vue";
-import { menuItems } from "../config/menu";
+import { useRouter } from "vue-router";
+import DefaultLayout from "@/layouts/DefaultLayout.vue";
+import NewsList, { NewsItem } from "@/components/news/NewsList.vue";
+import { useAuth } from "@/composables/useAuth";
+import { adminMenuItems, userMenuItems } from "@/config/menu";
 
 export default defineComponent({
     name: "News",
@@ -29,65 +31,86 @@ export default defineComponent({
         DefaultLayout,
         NewsList,
     },
-    data() {
-        return {
-            news: [] as NewsItem[],
-            menuItems,
-            loading: false,
-            currentPage: 1,
-            totalPages: 1,
-            perPage: 20,
-        };
-    },
-    methods: {
-        async fetchNews(page = 1) {
+    setup() {
+        const router = useRouter();
+        const { logout, isAdmin } = useAuth();
+        const news = ref<NewsItem[]>([]);
+        const loading = ref(false);
+        const currentPage = ref(1);
+        const totalPages = ref(1);
+        const perPage = ref(20);
+        const menuItems = ref(isAdmin.value ? adminMenuItems : userMenuItems);
+
+        watch(isAdmin, (newValue) => {
+            menuItems.value = newValue ? adminMenuItems : userMenuItems;
+        });
+
+        const fetchNews = async (page = 1) => {
             try {
-                this.loading = true;
+                loading.value = true;
                 const response = await axios.get("/api/news", {
                     params: {
                         page,
-                        per_page: this.perPage,
+                        per_page: perPage.value,
                     },
                     headers: {
                         Accept: "application/json",
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${localStorage.getItem(
-                            "token"
+                            "auth_token"
                         )}`,
                     },
                 });
-                console.log("API Response:", response.data);
                 if (Array.isArray(response.data.data)) {
-                    this.news = response.data.data;
-                    this.currentPage = response.data.current_page;
-                    this.totalPages = response.data.last_page;
+                    news.value = response.data.data;
+                    currentPage.value = response.data.current_page;
+                    totalPages.value = response.data.last_page;
                 } else {
                     console.error("Invalid response format:", response.data);
-                    this.news = [];
+                    news.value = [];
                 }
             } catch (error) {
                 console.error("Failed to fetch news:", error);
-                this.news = [];
+                news.value = [];
             } finally {
-                this.loading = false;
+                loading.value = false;
             }
-        },
-        handlePageChange(page: number) {
-            this.fetchNews(page);
-        },
-        viewNews(id: number) {
-            this.$router.push({ name: "NewsDetail", params: { id } });
-        },
-        createNews() {
-            this.$router.push({ name: "CreateNews" });
-        },
-        logout() {
-            localStorage.removeItem("auth_token");
-            this.$router.push({ name: "Login" });
-        },
-    },
-    mounted() {
-        this.fetchNews();
+        };
+
+        const handlePageChange = (page: number) => {
+            fetchNews(page);
+        };
+
+        const viewNews = (id: number) => {
+            router.push({ name: "newsDetail", params: { id } });
+        };
+
+        const createNews = () => {
+            router.push({ name: "createNews" });
+        };
+
+        const handleLogout = async () => {
+            try {
+                await logout();
+                router.push({ name: "Login" });
+            } catch (err) {
+                console.error("Logout failed:", err);
+            }
+        };
+
+        fetchNews();
+
+        return {
+            menuItems,
+            news,
+            loading,
+            currentPage,
+            totalPages,
+            handlePageChange,
+            viewNews,
+            createNews,
+            handleLogout,
+        };
     },
 });
 </script>

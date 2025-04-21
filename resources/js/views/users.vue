@@ -1,28 +1,29 @@
 <template>
-    <DefaultLayout :menu-items="menuItems" title="Users">
+    <default-layout
+        title="Users"
+        :menu-items="menuItems"
+        @logout="handleLogout"
+    >
         <v-container>
-            <!-- Search and Add User Button -->
             <v-row>
                 <v-col cols="12" sm="6" md="4">
                     <v-text-field
                         v-model="search"
                         prepend-inner-icon="mdi-magnify"
                         label="Search by name"
+                        variant="outlined"
+                        density="compact"
                         clearable
-                        outlined
-                        dense
                         @input="handleSearch"
                     ></v-text-field>
                 </v-col>
                 <v-col cols="12" sm="6" md="8" class="text-right">
-                    <v-btn color="primary" @click="openAddDialog">
+                    <BaseButton color="primary" @click="openAddDialog">
                         <v-icon left>mdi-plus</v-icon>
                         Add User
-                    </v-btn>
+                    </BaseButton>
                 </v-col>
             </v-row>
-
-            <!-- Users Table -->
             <v-data-table-server
                 :headers="headers"
                 :items="users"
@@ -41,13 +42,10 @@
                 must-sort
                 item-key="id"
             >
-                <!-- Created At Column -->
-                <template v-slot:item.created_at="{ item }">
+                <template #item.created_at="{ item }">
                     {{ formatDate(item.created_at) }}
                 </template>
-
-                <!-- Is Admin Column -->
-                <template v-slot:item.is_admin="{ item }">
+                <template #item.is_admin="{ item }">
                     <v-chip
                         :color="item.is_admin ? 'success' : 'default'"
                         small
@@ -55,9 +53,7 @@
                         {{ item.is_admin ? "Yes" : "No" }}
                     </v-chip>
                 </template>
-
-                <!-- Actions Column -->
-                <template v-slot:item.actions="{ item }">
+                <template #item.actions="{ item }">
                     <v-icon
                         small
                         class="mr-2"
@@ -66,23 +62,16 @@
                     >
                         mdi-pencil
                     </v-icon>
-                    <v-icon
-                        small
-                        @click.stop="deleteUser(item)"
-                        color="primary"
-                    >
+                    <v-icon small @click.stop="deleteUser(item)" color="error">
                         mdi-delete
                     </v-icon>
                 </template>
             </v-data-table-server>
-
-            <!-- Add/Edit Dialog -->
             <v-dialog v-model="dialog" max-width="500px">
-                <v-card>
+                <v-card class="dashboard-card" elevation="3">
                     <v-card-title>
                         <span>{{ formTitle }}</span>
                     </v-card-title>
-
                     <v-card-text>
                         <v-container>
                             <v-row>
@@ -166,74 +155,104 @@
                             </v-row>
                         </v-container>
                     </v-card-text>
-
                     <v-card-actions>
                         <v-spacer></v-spacer>
-                        <v-btn color="grey darken-1" text @click="close">
+                        <BaseButton
+                            color="secondary"
+                            variant="text"
+                            @click="close"
+                        >
                             Cancel
-                        </v-btn>
-                        <v-btn color="primary" text @click="save">Save</v-btn>
+                        </BaseButton>
+                        <BaseButton
+                            color="primary"
+                            variant="text"
+                            @click="save"
+                        >
+                            Save
+                        </BaseButton>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
-
-            <!-- Delete Confirmation Dialog -->
             <v-dialog v-model="deleteDialog" max-width="400px">
-                <v-card>
+                <v-card class="dashboard-card" elevation="3">
                     <v-card-title>Delete User</v-card-title>
                     <v-card-text>
                         Are you sure you want to delete this user?
                     </v-card-text>
                     <v-card-actions>
                         <v-spacer></v-spacer>
-                        <v-btn
-                            color="grey darken-1"
-                            text
+                        <BaseButton
+                            color="secondary"
+                            variant="text"
                             @click="deleteDialog = false"
                         >
                             Cancel
-                        </v-btn>
-                        <v-btn color="error" text @click="confirmDelete">
+                        </BaseButton>
+                        <BaseButton
+                            color="error"
+                            variant="text"
+                            @click="confirmDelete"
+                        >
                             Delete
-                        </v-btn>
+                        </BaseButton>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
+            <v-snackbar
+                v-model="snackbar"
+                :color="snackbarColor"
+                :timeout="3000"
+                location="top"
+                vertical
+            >
+                {{ snackbarText }}
+                <template #actions>
+                    <BaseButton
+                        color="white"
+                        variant="text"
+                        @click="snackbar = false"
+                    >
+                        Close
+                    </BaseButton>
+                </template>
+            </v-snackbar>
         </v-container>
-        <v-snackbar
-            v-model="snackbar"
-            :color="snackbarColor"
-            :timeout="3000"
-            :top="true"
-            :right="true"
-        >
-            {{ snackbarText }}
-            <template v-slot:actions>
-                <v-btn color="white" text @click="snackbar = false">
-                    Close
-                </v-btn>
-            </template>
-        </v-snackbar>
-    </DefaultLayout>
+    </default-layout>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent, ref, watch, computed } from "vue";
 import axios from "axios";
+import { useRouter } from "vue-router";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
-import { menuItems } from "@/config/menu.ts";
+import BaseButton from "@/components/BaseButton.vue";
+import { useAuth } from "@/composables/useAuth";
+import { adminMenuItems, userMenuItems } from "@/config/menu";
 
-export default {
+interface User {
+    id: number;
+    name: string;
+    email: string;
+    username: string;
+    created_at: string;
+    is_admin: boolean;
+}
+
+export default defineComponent({
     name: "UsersTable",
     components: {
         DefaultLayout,
+        BaseButton,
     },
-    data: () => ({
-        menuItems,
-        search: "",
-        loading: false,
-        dialog: false,
-        deleteDialog: false,
-        options: {
+    setup() {
+        const router = useRouter();
+        const { logout, isAdmin } = useAuth();
+        const search = ref("");
+        const loading = ref(false);
+        const dialog = ref(false);
+        const deleteDialog = ref(false);
+        const options = ref({
             page: 1,
             itemsPerPage: 10,
             sortBy: [],
@@ -241,9 +260,9 @@ export default {
             groupBy: [],
             groupDesc: [],
             multiSort: false,
-        },
-        totalUsers: 0,
-        headers: [
+        });
+        const totalUsers = ref(0);
+        const headers = ref([
             { title: "Name", key: "name", align: "start", sortable: true },
             { title: "Email", key: "email", align: "start", sortable: true },
             {
@@ -265,212 +284,250 @@ export default {
                 align: "center",
                 sortable: false,
             },
-        ],
-        users: [],
-        editedIndex: -1,
-        editedItem: {
+        ]);
+        const users = ref<User[]>([]);
+        const editedIndex = ref(-1);
+        const editedItem = ref({
             name: "",
             email: "",
             username: "",
             password: "",
             password_confirmation: "",
             is_admin: false,
-        },
-        defaultItem: {
+        });
+        const defaultItem = ref({
             name: "",
             email: "",
             username: "",
             password: "",
             password_confirmation: "",
             is_admin: false,
-        },
-        userToDelete: null,
-        snackbar: false,
-        snackbarText: "",
-        snackbarColor: "success",
-        validationErrors: {},
-    }),
+        });
+        const userToDelete = ref<User | null>(null);
+        const snackbar = ref(false);
+        const snackbarText = ref("");
+        const snackbarColor = ref<"success" | "error">("success");
+        const validationErrors = ref({});
+        const menuItems = ref(isAdmin.value ? adminMenuItems : userMenuItems);
 
-    computed: {
-        formTitle() {
-            return this.editedIndex === -1 ? "New User" : "Edit User";
-        },
-    },
+        watch(isAdmin, (newValue) => {
+            menuItems.value = newValue ? adminMenuItems : userMenuItems;
+        });
 
-    methods: {
-        showSnackbar(text, color = "success") {
-            this.snackbarText = text;
-            this.snackbarColor = color;
-            this.snackbar = true;
-        },
-        handleTableUpdate(newOptions) {
-            this.options = {
-                ...this.options,
+        const formTitle = computed(() => {
+            return editedIndex.value === -1 ? "New User" : "Edit User";
+        });
+
+        const showSnackbar = (
+            text: string,
+            color: "success" | "error" = "success"
+        ) => {
+            snackbarText.value = text;
+            snackbarColor.value = color;
+            snackbar.value = true;
+        };
+
+        const handleTableUpdate = (newOptions: any) => {
+            options.value = {
+                ...options.value,
                 page: newOptions.page || 1,
                 itemsPerPage: newOptions.itemsPerPage || 10,
                 sortBy: Array.isArray(newOptions.sortBy)
                     ? newOptions.sortBy
-                    : this.options.sortBy || [],
+                    : options.value.sortBy || [],
                 sortDesc: Array.isArray(newOptions.sortDesc)
                     ? newOptions.sortDesc
-                    : this.options.sortDesc || [],
+                    : options.value.sortDesc || [],
             };
-            this.fetchUsers();
-        },
-        async fetchUsers() {
-            if (this.loading) return;
+            fetchUsers();
+        };
 
-            this.loading = true;
+        const fetchUsers = async () => {
+            if (loading.value) return;
+            loading.value = true;
             try {
-                const { page, itemsPerPage, sortBy = [] } = this.options;
-
-                console.log("fetchUsers options:", { sortBy });
-
+                const { page, itemsPerPage, sortBy = [] } = options.value;
                 const sort_by =
                     sortBy.length > 0 ? sortBy[0].key : "created_at";
                 const sort_desc =
                     sortBy.length > 0 ? sortBy[0].order === "desc" : false;
-
                 const response = await axios.get("/api/users", {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem(
-                            "token"
+                            "auth_token"
                         )}`,
                     },
                     params: {
                         page,
                         per_page: itemsPerPage,
-                        search: this.search,
+                        search: search.value,
                         sort_by,
                         sort_desc: sort_desc ? 1 : 0,
                     },
                 });
-
-                this.users = response.data.data;
-                this.totalUsers = response.data.meta.total;
+                users.value = response.data.data;
+                totalUsers.value = response.data.meta.total;
             } catch (error) {
-                this.showSnackbar("Error loading users", "error");
+                showSnackbar("Error loading users", "error");
                 console.error("Error fetching users:", error);
             } finally {
-                this.loading = false;
+                loading.value = false;
             }
-        },
-        handleSearch: debounce(function () {
-            this.options.page = 1; // Reset to first page when searching
-            this.fetchUsers();
-        }, 300),
+        };
 
-        formatDate(date) {
+        const handleSearch = debounce(() => {
+            options.value.page = 1;
+            fetchUsers();
+        }, 300);
+
+        const formatDate = (date: string) => {
             return new Date(date).toLocaleDateString();
-        },
+        };
 
-        openAddDialog() {
-            this.editedIndex = -1;
-            this.editedItem = { ...this.defaultItem };
-            this.dialog = true;
-        },
+        const openAddDialog = () => {
+            editedIndex.value = -1;
+            editedItem.value = { ...defaultItem.value };
+            dialog.value = true;
+        };
 
-        deleteUser(item) {
-            this.userToDelete = item;
-            this.deleteDialog = true;
-        },
+        const deleteUser = (item: User) => {
+            userToDelete.value = item;
+            deleteDialog.value = true;
+        };
 
-        // Update your confirmDelete method
-        async confirmDelete() {
+        const confirmDelete = async () => {
             try {
-                await axios.delete(`/api/users/${this.userToDelete.id}`, {
+                await axios.delete(`/api/users/${userToDelete.value!.id}`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem(
-                            "token"
+                            "auth_token"
                         )}`,
                     },
                 });
-                this.showSnackbar("User deleted successfully");
-                await this.fetchUsers();
-                this.deleteDialog = false;
-                this.userToDelete = null;
+                showSnackbar("User deleted successfully");
+                await fetchUsers();
+                deleteDialog.value = false;
+                userToDelete.value = null;
             } catch (error) {
-                this.showSnackbar("Error deleting user", "error");
+                showSnackbar("Error deleting user", "error");
                 console.error("Error deleting user:", error);
             }
-        },
+        };
 
-        close() {
-            this.dialog = false;
-            this.validationErrors = {};
-            this.$nextTick(() => {
-                this.editedItem = { ...this.defaultItem };
-                this.editedIndex = -1;
-            });
-        },
-        // Update your existing save method
-        async save() {
+        const close = () => {
+            dialog.value = false;
+            validationErrors.value = {};
+            editedItem.value = { ...defaultItem.value };
+            editedIndex.value = -1;
+        };
+
+        const save = async () => {
             try {
-                this.validationErrors = {};
+                validationErrors.value = {};
                 const headers = {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    Authorization: `Bearer ${localStorage.getItem(
+                        "auth_token"
+                    )}`,
                     "Content-Type": "application/json",
                 };
-
                 const data = {
-                    name: this.editedItem.name,
-                    email: this.editedItem.email,
-                    username: this.editedItem.username,
-                    is_admin: this.editedItem.is_admin,
+                    name: editedItem.value.name,
+                    email: editedItem.value.email,
+                    username: editedItem.value.username,
+                    is_admin: editedItem.value.is_admin,
                 };
-
-                if (this.editedIndex === -1) {
-                    data.password = this.editedItem.password;
+                if (editedIndex.value === -1) {
+                    data.password = editedItem.value.password;
                     data.password_confirmation =
-                        this.editedItem.password_confirmation;
+                        editedItem.value.password_confirmation;
                 }
-
-                if (this.editedIndex > -1) {
-                    await axios.put(`/api/users/${this.editedItem.id}`, data, {
+                if (editedIndex.value > -1) {
+                    await axios.put(`/api/users/${editedItem.value.id}`, data, {
                         headers,
                     });
-                    this.showSnackbar("User updated successfully");
+                    showSnackbar("User updated successfully");
                 } else {
-                    await axios.post("/api/users", data, {
-                        headers,
-                    });
-                    this.showSnackbar("User created successfully");
+                    await axios.post("/api/users", data, { headers });
+                    showSnackbar("User created successfully");
                 }
-
-                await this.fetchUsers();
-                this.close();
-            } catch (error) {
+                await fetchUsers();
+                close();
+            } catch (error: any) {
                 if (error.response && error.response.status === 422) {
-                    this.validationErrors = error.response.data.errors || {};
-                    this.showSnackbar(
-                        "Please check the form for errors",
-                        "error"
-                    );
+                    validationErrors.value = error.response.data.errors || {};
+                    showSnackbar("Please check the form for errors", "error");
                 } else {
-                    this.showSnackbar(
-                        "An error occurred while saving",
-                        "error"
-                    );
+                    showSnackbar("An error occurred while saving", "error");
                     console.error("Error saving user:", error);
                 }
             }
-        },
-        viewUser(item) {
-            this.$router.push(`/users/${item.id}`);
-        },
-    },
+        };
 
-    mounted() {
-        this.fetchUsers();
-    },
-};
+        const viewUser = (item: User) => {
+            router.push(`/users/${item.id}`);
+        };
 
-// Debounce function to prevent too many API calls while searching
-function debounce(fn, delay) {
-    let timeoutId;
-    return function (...args) {
+        const handleLogout = async () => {
+            try {
+                await logout();
+                router.push({ name: "Login" });
+            } catch (err) {
+                console.error("Logout failed:", err);
+            }
+        };
+
+        fetchUsers();
+
+        return {
+            menuItems,
+            search,
+            loading,
+            dialog,
+            deleteDialog,
+            options,
+            totalUsers,
+            headers,
+            users,
+            editedIndex,
+            editedItem,
+            defaultItem,
+            userToDelete,
+            snackbar,
+            snackbarText,
+            snackbarColor,
+            validationErrors,
+            formTitle,
+            showSnackbar,
+            handleTableUpdate,
+            handleSearch,
+            formatDate,
+            openAddDialog,
+            deleteUser,
+            confirmDelete,
+            close,
+            save,
+            viewUser,
+            handleLogout,
+        };
+    },
+});
+
+function debounce(fn: (...args: any[]) => void, delay: number) {
+    let timeoutId: NodeJS.Timeout;
+    return (...args: any[]) => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => fn.apply(this, args), delay);
+        timeoutId = setTimeout(() => fn(...args), delay);
     };
 }
 </script>
+
+<style scoped>
+/* Background card dinamis berdasarkan tema */
+:root[data-theme="normal"] .dashboard-card,
+:root[data-theme="singleTone"] .dashboard-card {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+:root[data-theme="night"] .dashboard-card {
+    background-color: rgba(46, 46, 46, 0.9);
+}
+</style>
