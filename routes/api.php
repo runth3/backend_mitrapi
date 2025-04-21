@@ -12,55 +12,94 @@ use App\Http\Controllers\FaceModelController;
 use App\Http\Controllers\UserController;
 
 // Public routes
-Route::post('auth/login', [AuthController::class, 'login'])->name('login');
-Route::post('auth/refresh', [AuthController::class, 'refresh'])->name('_REFRESH_TOKEN');
-Route::get('/version/check', [VersionController::class, 'checkVersion']);
+Route::prefix('auth')->group(function () {
+    Route::post('login', [AuthController::class, 'login'])->name('login');
+    Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token');
+});
 
-// Protected routes
+Route::get('version/check', [VersionController::class, 'checkVersion'])->name('version.check');
+
+// Protected routes (authenticated users)
 Route::middleware('api.auth')->group(function () {
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::post('/auth/changepassword', [AuthController::class, 'changePassword']);
-    Route::get('/profile/me', [ProfileController::class, 'me']);
-    Route::get('/profile/apps', [ProfileController::class, 'apps']);
-    Route::get('/office/me', [OfficeController::class, 'me']);
-    Route::get('/office/{id_instansi}', [OfficeController::class, 'showByInstansi']);
-    Route::get('/office/koordinat/{id_instansi}', [OfficeController::class, 'getKoordinatByInstansi']);
-    Route::get('/attendance/me', [AttendanceController::class, 'me']);
-    Route::post('/attendance/checkin', [AttendanceController::class, 'checkin']);
-    Route::post('/attendance/manual-checkin', [AttendanceController::class, 'manualCheckin']);
-    Route::post('/attendance/{id}/approve-reject', [AttendanceController::class, 'approveOrReject']);
-    Route::get('/attendance/manual', [AttendanceController::class, 'listManualAttendance']);
-    Route::post('/attendance/upload-photo', [AttendanceController::class, 'uploadPhoto']);
-    Route::get('/news/latest', [NewsController::class, 'latest']);
-    Route::get('/news/{id}', [NewsController::class, 'show']);
-    Route::prefix('face-model')->group(function () {
-        Route::get('/', [FaceModelController::class, 'index']);
-        Route::post('/', [FaceModelController::class, 'store']);
-        Route::get('/active', [FaceModelController::class, 'getActive']);
-        Route::get('/{id}', [FaceModelController::class, 'show']);
-        Route::put('/{id}/set-active', [FaceModelController::class, 'setActive']);
-        Route::delete('/{id}', [FaceModelController::class, 'destroy']);
-        Route::get('/user/{userId}', [FaceModelController::class, 'getByUserId']);
+    // Authentication
+    Route::prefix('auth')->group(function () {
+        Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+        Route::post('change-password', [AuthController::class, 'changePassword'])->name('change-password');
     });
-    Route::get('/performance', [PerformanceController::class, 'index']);
-    Route::get('/performance/me', [PerformanceController::class, 'me']);
-    Route::post('/performance/filter', [PerformanceController::class, 'filterByApv']);
-    Route::post('/performance', [PerformanceController::class, 'store']);
-    Route::get('/performance/{id}', [PerformanceController::class, 'show']);
-    Route::put('/performance/{id}', [PerformanceController::class, 'update']);
-    Route::delete('/performance/{id}', [PerformanceController::class, 'destroy']);
+
+    // Profile
+    Route::prefix('profile')->group(function () {
+        Route::get('me', [ProfileController::class, 'me'])->name('profile.me');
+        Route::get('apps', [ProfileController::class, 'apps'])->name('profile.apps');
+    });
+
+    // Office
+    Route::prefix('offices')->group(function () {
+        Route::get('me', [OfficeController::class, 'me'])->name('offices.me');
+        Route::get('{instansi_id}', [OfficeController::class, 'showByInstansi'])->name('offices.show-by-instansi');
+        Route::get('{instansi_id}/coordinates', [OfficeController::class, 'getKoordinatByInstansi'])->name('offices.coordinates');
+    });
+
+    // Attendance
+    Route::prefix('attendances')->group(function () {
+        Route::get('me', [AttendanceController::class, 'me'])->name('attendances.me');
+        Route::post('check-in', [AttendanceController::class, 'checkin'])->name('attendances.check-in');
+        Route::post('manual-check-in', [AttendanceController::class, 'manualCheckin'])->name('attendances.manual-check-in');
+        Route::post('{id}/approve-or-reject', [AttendanceController::class, 'approveOrReject'])->name('attendances.approve-or-reject');
+        Route::get('manual', [AttendanceController::class, 'listManualAttendance'])->name('attendances.manual-list');
+        Route::post('upload-photo', [AttendanceController::class, 'uploadPhoto'])->name('attendances.upload-photo');
+    });
+
+    // News
+    Route::prefix('news')->group(function () {
+        Route::get('latest', [NewsController::class, 'latest'])->name('news.latest');
+        Route::get('{id}', [NewsController::class, 'show'])->name('news.show');
+    });
+
+    // Face Models
+    Route::prefix('face-models')->group(function () {
+        Route::get('/', [FaceModelController::class, 'index'])->name('face-models.index');
+        Route::post('/', [FaceModelController::class, 'store'])->name('face-models.store');
+        Route::get('active', [FaceModelController::class, 'getActive'])->name('face-models.active');
+        Route::get('{id}', [FaceModelController::class, 'show'])->name('face-models.show');
+        Route::put('{id}/set-active', [FaceModelController::class, 'setActive'])->name('face-models.set-active');
+        Route::delete('{id}', [FaceModelController::class, 'destroy'])->name('face-models.destroy');
+        Route::get('user/{user_id}', [FaceModelController::class, 'getByUserId'])->name('face-models.by-user');
+    });
+
+    // Performance
+    Route::prefix('performances')->group(function () {
+        Route::get('/', [PerformanceController::class, 'index'])->name('performances.index');
+        Route::get('me', [PerformanceController::class, 'me'])->name('performances.me');
+        Route::post('filter', [PerformanceController::class, 'filterByApv'])->name('performances.filter');
+        Route::post('/', [PerformanceController::class, 'store'])->name('performances.store');
+        Route::get('{id}', [PerformanceController::class, 'show'])->name('performances.show');
+        Route::put('{id}', [PerformanceController::class, 'update'])->name('performances.update');
+        Route::delete('{id}', [PerformanceController::class, 'destroy'])->name('performances.destroy');
+    });
 });
 
 // Admin-only routes
 Route::middleware(['api.auth', 'admin'])->group(function () {
-    Route::delete('/face/models/{id}', [FaceModelController::class, 'destroy']);
-    Route::get('/news', [NewsController::class, 'index']);
-    Route::post('/news', [NewsController::class, 'store']);
-    Route::put('/news/{id}', [NewsController::class, 'update']);
-    Route::delete('/news/{id}', [NewsController::class, 'destroy']);
-    Route::get('/users', [UserController::class, 'index']);
-    Route::post('/users', [UserController::class, 'store']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::put('/users/{id}', [UserController::class, 'update']);
-    Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    // News (Admin)
+    Route::prefix('news')->group(function () {
+        Route::get('/', [NewsController::class, 'index'])->name('news.index');
+        Route::post('/', [NewsController::class, 'store'])->name('news.store');
+        Route::put('{id}', [NewsController::class, 'update'])->name('news.update');
+        Route::delete('{id}', [NewsController::class, 'destroy'])->name('news.destroy');
+    });
+
+    // Users
+    Route::prefix('users')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('users.index');
+        Route::post('/', [UserController::class, 'store'])->name('users.store');
+        Route::get('{id}', [UserController::class, 'show'])->name('users.show');
+        Route::put('{id}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('{id}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
+
+    // Face Models (Admin)
+    Route::prefix('face-models')->group(function () {
+        Route::delete('{id}', [FaceModelController::class, 'destroy'])->name('face-models.admin-destroy');
+    });
 });
