@@ -1,158 +1,291 @@
 {
-  "_menu-Bv5cnfWA.css": {
-    "file": "assets/menu-Bv5cnfWA.css",
-    "src": "_menu-Bv5cnfWA.css"
+  "_BaseCard-9PzGWFDB.css": {
+    "file": "assets/BaseCard-9PzGWFDB.css",
+    "src": "_BaseCard-9PzGWFDB.css"
   },
-  "_menu-DXkp5gbb.js": {
-    "file": "assets/menu-DXkp5gbb.js",
-    "name": "menu",
+  "_BaseCard-B_boPAs5.js": {
+    "file": "assets/BaseCard-B_boPAs5.js",
+    "name": "BaseCard",
     "imports": [
-      "resources/js/app.ts"
+      "resources/js/main.ts"
     ],
     "css": [
-      "assets/menu-Bv5cnfWA.css"
+      "assets/BaseCard-9PzGWFDB.css"
     ]
   },
-  "node_modules/@mdi/font/fonts/materialdesignicons-webfont.eot": {
-    "file": "assets/materialdesignicons-webfont-CSr8KVlo.eot",
-    "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.eot"
+  "_DefaultLayout-BfzibNvz.css": {
+    "file": "assets/DefaultLayout-BfzibNvz.css",
+    "src": "_DefaultLayout-BfzibNvz.css"
   },
-  "node_modules/@mdi/font/fonts/materialdesignicons-webfont.ttf": {
-    "file": "assets/materialdesignicons-webfont-B7mPwVP_.ttf",
-    "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.ttf"
+  "_DefaultLayout-pjWI6CN4.js": {
+    "file": "assets/DefaultLayout-pjWI6CN4.js",
+    "name": "DefaultLayout",
+    "imports": [
+      "resources/js/main.ts",
+      "_useAuth-CyrCXpST.js"
+    ],
+    "css": [
+      "assets/DefaultLayout-BfzibNvz.css"
+    ]
   },
-  "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff": {
-    "file": "assets/materialdesignicons-webfont-PXm3-2wK.woff",
-    "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff"
+  "_VChip-B7ajks74.css": {
+    "file": "assets/VChip-B7ajks74.css",
+    "src": "_VChip-B7ajks74.css"
   },
-  "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff2": {
-    "file": "assets/materialdesignicons-webfont-Dp5v-WZN.woff2",
-    "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff2"
+  "_VChip-CRE1ALfE.js": {
+    "file": "assets/VChip-CRE1ALfE.js",
+    "name": "VChip",
+    "imports": [
+      "resources/js/main.ts"
+    ],
+    "css": [
+      "assets/VChip-B7ajks74.css"
+    ]
+  },
+  "_VDialog-0Yo6ZR6o.css": {
+    "file": "assets/VDialog-0Yo6ZR6o.css",
+    "src": "_VDialog-0Yo6ZR6o.css"
+  },
+  "_VDialog-DmfLH6S0.js": {
+    "file": "assets/VDialog-DmfLH6S0.js",
+    "name": "VDialog",
+    "imports": [
+      "_DefaultLayout-pjWI6CN4.js",
+      "resources/js/main.ts"
+    ],
+    "css": [
+      "assets/VDialog-0Yo6ZR6o.css"
+    ]
+  },
+  "_VFileInput-BZiqEOXM.js": {
+    "file": "assets/VFileInput-BZiqEOXM.js",
+    "name": "VFileInput",
+    "imports": [
+      "resources/js/main.ts",
+      "_VChip-CRE1ALfE.js"
+    ],
+    "css": [
+      "assets/VFileInput-fxZ_IIm6.css"
+    ]
+  },
+  "_VFileInput-fxZ_IIm6.css": {
+    "file": "assets/VFileInput-fxZ_IIm6.css",
+    "src": "_VFileInput-fxZ_IIm6.css"
+  },
+  "_VPagination-CQjHGj8I.js": {
+    "file": "assets/VPagination-CQjHGj8I.js",
+    "name": "VPagination",
+    "imports": [
+      "resources/js/main.ts"
+    ],
+    "css": [
+      "assets/VPagination-CgkIFNCO.css"
+    ]
+  },
+  "_VPagination-CgkIFNCO.css": {
+    "file": "assets/VPagination-CgkIFNCO.css",
+    "src": "_VPagination-CgkIFNCO.css"
+  },
+  "_VSnackbar-BYpux9sK.css": {
+    "file": "assets/VSnackbar-BYpux9sK.css",
+    "src": "_VSnackbar-BYpux9sK.css"
+  },
+  "_VSnackbar-Bj6DwHS3.js": {
+    "file": "assets/VSnackbar-Bj6DwHS3.js",
+    "name": "VSnackbar",
+    "imports": [
+      "_DefaultLayout-pjWI6CN4.js",
+      "resources/js/main.ts"
+    ],
+    "css": [
+      "assets/VSnackbar-BYpux9sK.css"
+    ]
+  },
+  "_index-t--hEgTQ.js": {
+    "file": "assets/index-t--hEgTQ.js",
+    "name": "index"
+  },
+  "_useAuth-BOD7KWqP.css": {
+    "file": "assets/useAuth-BOD7KWqP.css",
+    "src": "_useAuth-BOD7KWqP.css"
+  },
+  "_useAuth-CyrCXpST.js": {
+    "file": "assets/useAuth-CyrCXpST.js",
+    "name": "useAuth",
+    "imports": [
+      "resources/js/main.ts"
+    ],
+    "css": [
+      "assets/useAuth-BOD7KWqP.css"
+    ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BlkptJXu.css",
+    "file": "assets/app-BYtUOnMG.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
-  "resources/js/app.ts": {
-    "file": "assets/app-ClbCorYk.js",
-    "name": "app",
-    "src": "resources/js/app.ts",
+  "resources/js/main.ts": {
+    "file": "assets/main-DvbPgVvv.js",
+    "name": "main",
+    "src": "resources/js/main.ts",
     "isEntry": true,
     "dynamicImports": [
       "resources/js/views/login.vue",
       "resources/js/views/dashboard.vue",
-      "resources/js/views/news.vue",
-      "resources/js/views/news-detail.vue",
-      "resources/js/views/create-news.vue",
-      "resources/js/views/users.vue",
-      "resources/js/views/users-detail.vue",
       "resources/js/views/FaceModelListView.vue",
-      "resources/js/views/profile.vue"
+      "resources/js/views/create-news.vue",
+      "resources/js/views/news-detail.vue",
+      "resources/js/views/news.vue",
+      "resources/js/views/profile.vue",
+      "resources/js/views/users-detail.vue",
+      "resources/js/views/users.vue"
     ],
     "css": [
-      "assets/app-D9sy2EWD.css"
+      "assets/main-Comf7LPh.css"
     ]
   },
   "resources/js/views/FaceModelListView.vue": {
-    "file": "assets/FaceModelListView-CssSyCNA.js",
+    "file": "assets/FaceModelListView-1gMqU3JC.js",
     "name": "FaceModelListView",
     "src": "resources/js/views/FaceModelListView.vue",
     "isDynamicEntry": true,
     "imports": [
-      "resources/js/app.ts",
-      "_menu-DXkp5gbb.js"
+      "_index-t--hEgTQ.js",
+      "resources/js/main.ts",
+      "_DefaultLayout-pjWI6CN4.js",
+      "_VDialog-DmfLH6S0.js",
+      "_useAuth-CyrCXpST.js",
+      "_VFileInput-BZiqEOXM.js",
+      "_VChip-CRE1ALfE.js"
     ],
     "css": [
-      "assets/FaceModelListView-BEVUWRPK.css"
+      "assets/FaceModelListView-BHgKXj39.css"
     ]
   },
   "resources/js/views/create-news.vue": {
-    "file": "assets/create-news-BuzVbv5M.js",
+    "file": "assets/create-news-COMxwUfs.js",
     "name": "create-news",
     "src": "resources/js/views/create-news.vue",
     "isDynamicEntry": true,
     "imports": [
-      "resources/js/app.ts",
-      "_menu-DXkp5gbb.js"
+      "_index-t--hEgTQ.js",
+      "resources/js/main.ts",
+      "_DefaultLayout-pjWI6CN4.js",
+      "_VFileInput-BZiqEOXM.js",
+      "_VChip-CRE1ALfE.js",
+      "_useAuth-CyrCXpST.js",
+      "_VSnackbar-Bj6DwHS3.js"
     ],
     "css": [
-      "assets/create-news-BtKDpPTb.css"
+      "assets/create-news-w9bBRShq.css"
     ]
   },
   "resources/js/views/dashboard.vue": {
-    "file": "assets/dashboard-DxxQeViq.js",
+    "file": "assets/dashboard-BQYqd86V.js",
     "name": "dashboard",
     "src": "resources/js/views/dashboard.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_menu-DXkp5gbb.js",
-      "resources/js/app.ts"
+      "resources/js/main.ts",
+      "_DefaultLayout-pjWI6CN4.js",
+      "_useAuth-CyrCXpST.js",
+      "_BaseCard-B_boPAs5.js",
+      "_VSnackbar-Bj6DwHS3.js"
+    ],
+    "css": [
+      "assets/dashboard-BlI8LRB_.css"
     ]
   },
   "resources/js/views/login.vue": {
-    "file": "assets/login-BDBEDQrM.js",
+    "file": "assets/login-OjfulMlw.js",
     "name": "login",
     "src": "resources/js/views/login.vue",
     "isDynamicEntry": true,
     "imports": [
-      "resources/js/app.ts"
+      "resources/js/main.ts",
+      "_useAuth-CyrCXpST.js",
+      "_BaseCard-B_boPAs5.js"
     ],
     "css": [
-      "assets/login-N6pBm2dZ.css"
+      "assets/login-Bps4-p-i.css"
     ]
   },
   "resources/js/views/news-detail.vue": {
-    "file": "assets/news-detail-BR03jked.js",
+    "file": "assets/news-detail-kTEhyqYc.js",
     "name": "news-detail",
     "src": "resources/js/views/news-detail.vue",
     "isDynamicEntry": true,
     "imports": [
-      "resources/js/app.ts",
-      "_menu-DXkp5gbb.js"
+      "_index-t--hEgTQ.js",
+      "resources/js/main.ts",
+      "_DefaultLayout-pjWI6CN4.js",
+      "_useAuth-CyrCXpST.js",
+      "_VSnackbar-Bj6DwHS3.js"
     ],
     "css": [
-      "assets/news-detail-DvXPzfof.css"
+      "assets/news-detail-Bnvh3hIi.css"
     ]
   },
   "resources/js/views/news.vue": {
-    "file": "assets/news-Ds-L8vY_.js",
+    "file": "assets/news-CLuZaroc.js",
     "name": "news",
     "src": "resources/js/views/news.vue",
     "isDynamicEntry": true,
     "imports": [
-      "resources/js/app.ts",
-      "_menu-DXkp5gbb.js"
+      "_index-t--hEgTQ.js",
+      "resources/js/main.ts",
+      "_DefaultLayout-pjWI6CN4.js",
+      "_VPagination-CQjHGj8I.js",
+      "_useAuth-CyrCXpST.js"
     ]
   },
   "resources/js/views/profile.vue": {
-    "file": "assets/profile-CNpqn2fM.js",
+    "file": "assets/profile-Yl9szrE8.js",
     "name": "profile",
     "src": "resources/js/views/profile.vue",
     "isDynamicEntry": true,
     "imports": [
-      "resources/js/app.ts",
-      "_menu-DXkp5gbb.js"
+      "_index-t--hEgTQ.js",
+      "resources/js/main.ts",
+      "_DefaultLayout-pjWI6CN4.js",
+      "_useAuth-CyrCXpST.js"
+    ],
+    "css": [
+      "assets/profile-DC6gMIeL.css"
     ]
   },
   "resources/js/views/users-detail.vue": {
-    "file": "assets/users-detail-C7KNG2Tn.js",
+    "file": "assets/users-detail-DW12HlkW.js",
     "name": "users-detail",
     "src": "resources/js/views/users-detail.vue",
     "isDynamicEntry": true,
     "imports": [
-      "resources/js/app.ts",
-      "_menu-DXkp5gbb.js"
+      "_index-t--hEgTQ.js",
+      "resources/js/main.ts",
+      "_DefaultLayout-pjWI6CN4.js",
+      "_useAuth-CyrCXpST.js"
+    ],
+    "css": [
+      "assets/users-detail-CbCrPJR3.css"
     ]
   },
   "resources/js/views/users.vue": {
-    "file": "assets/users-CkgDfvtw.js",
+    "file": "assets/users-B2Qt63Cp.js",
     "name": "users",
     "src": "resources/js/views/users.vue",
     "isDynamicEntry": true,
     "imports": [
-      "resources/js/app.ts",
-      "_menu-DXkp5gbb.js"
+      "_index-t--hEgTQ.js",
+      "resources/js/main.ts",
+      "_DefaultLayout-pjWI6CN4.js",
+      "_useAuth-CyrCXpST.js",
+      "_VPagination-CQjHGj8I.js",
+      "_VChip-CRE1ALfE.js",
+      "_VDialog-DmfLH6S0.js",
+      "_VSnackbar-Bj6DwHS3.js"
+    ],
+    "css": [
+      "assets/users-CQDGCFFN.css"
     ]
   }
 }

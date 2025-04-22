@@ -1,1 +1,0 @@
-import{d as e,_ as s,c as r,w as t,m as o,D as d,o as n,r as c}from"./main-iU3nZ3Bq.js";const p=e({name:"BaseCard",inheritAttrs:!1});function i(a,_,f,l,m,u){return n(),r(d,o({class:"dashboard-card",elevation:"3"},a.$attrs),{default:t(()=>[c(a.$slots,"default",{},void 0,!0)]),_:3},16)}const B=s(p,[["render",i],["__scopeId","data-v-6622d47c"]]);export{B};
