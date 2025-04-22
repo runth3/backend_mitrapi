@@ -516,15 +516,6 @@ console.log(userEmail.value); // "john.doe@example.com"
         npm run dev
         ```
 
--   **Build**:
-
-    -   Build aplikasi dengan:
-        ```bash
-        npm run build
-        npm run preview
-        ```
-    -   Uji di `http://localhost:4173`.
-
 -   **Struktur Proyek**:
     -   Simpan semua base components di `resources/js/components/` dengan awalan `Base` (misalnya, `BaseButton`, `BaseCard`).
     -   Simpan composables di `resources/js/composables/` dengan awalan `use` (misalnya, `useAuth`, `useUser`).

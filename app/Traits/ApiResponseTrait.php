@@ -7,36 +7,27 @@ use Carbon\Carbon;
 
 trait ApiResponseTrait
 {
-    /**
-     * Return a standardized success response.
-     *
-     * @param mixed $data
-     * @param string|null $message
-     * @param int $statusCode
-     * @return JsonResponse
-     */
-    public function successResponse($data = null, $message = null, $statusCode = 200): JsonResponse
+    public function successResponse($data = null, $message = null, $meta = null, $statusCode = 200): JsonResponse
     {
-        return response()->json([
+        $response = [
             'status' => 'success',
             'data' => $data,
             'error' => null,
+            'meta' => $meta,
             'last_updated' => Carbon::now()->toIso8601String(),
             'message' => $message,
-        ], $statusCode);
+        ];
+
+        if ($meta === null) {
+            unset($response['meta']);
+        }
+
+        return response()->json($response, $statusCode);
     }
 
-    /**
-     * Return a standardized error response.
-     *
-     * @param string $message
-     * @param int $statusCode
-     * @param mixed $details
-     * @return JsonResponse
-     */
-    public function errorResponse($message, $statusCode, $details = null): JsonResponse
+    public function errorResponse($message, $statusCode, $details = null, $meta = null): JsonResponse
     {
-        return response()->json([
+        $response = [
             'status' => 'error',
             'data' => null,
             'error' => [
@@ -44,8 +35,15 @@ trait ApiResponseTrait
                 'message' => $message,
                 'details' => $details,
             ],
+            'meta' => $meta,
             'last_updated' => Carbon::now()->toIso8601String(),
             'message' => null,
-        ], $statusCode);
+        ];
+
+        if ($meta === null) {
+            unset($response['meta']);
+        }
+
+        return response()->json($response, $statusCode);
     }
 }

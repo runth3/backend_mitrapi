@@ -13,10 +13,14 @@ use App\Http\Controllers\UserController;
 
 // Public routes
 Route::prefix('auth')->group(function () {
-    Route::post('login', [AuthController::class, 'login'])->name('login')->middleware('throttle:10,1');
-    Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token')->middleware('throttle:10,1');
+    Route::post('login', [AuthController::class, 'login'])->name('login');
+    Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token');
 });
-
+// Public routes
+Route::prefix('news')->group(function () {
+    Route::get('latest', [NewsController::class, 'latest'])->name('news.latest');
+    Route::get('{id}', [NewsController::class, 'show'])->name('news.show');
+});
 Route::get('version/check', [VersionController::class, 'checkVersion'])->name('version.check');
 
 // Protected routes (authenticated users)
@@ -45,18 +49,13 @@ Route::middleware('api.auth')->group(function () {
     Route::prefix('attendances')->group(function () {
         Route::get('me', [AttendanceController::class, 'me'])->name('attendances.me');
         Route::post('check-in', [AttendanceController::class, 'checkin'])->name('attendances.check-in');
-        Route::post('manual-check-in', [AttendanceController::class, 'manualCheckin'])->name('attendances.manual-check-in');
+        Route::post('manual-check-in', [AuthController::class, 'manualCheckin'])->name('attendances.manual-check-in');
         Route::post('{id}/approve-or-reject', [AttendanceController::class, 'approveOrReject'])->name('attendances.approve-or-reject');
         Route::get('manual', [AttendanceController::class, 'listManualAttendance'])->name('attendances.manual-list');
         Route::post('upload-photo', [AttendanceController::class, 'uploadPhoto'])->name('attendances.upload-photo');
     });
 
-    // News
-    Route::prefix('news')->group(function () {
-        Route::get('latest', [NewsController::class, 'latest'])->name('news.latest');
-        Route::get('{id}', [NewsController::class, 'show'])->name('news.show');
-    });
-
+    
     // Face Models
     Route::prefix('face-models')->group(function () {
         Route::get('/', [FaceModelController::class, 'index'])->name('face-models.index');

@@ -71,7 +71,7 @@ class ProfileController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
-            return $this->successResponse($response, 'Profile retrieved successfully', 200);
+            return $this->successResponse($response, 'Profile retrieved successfully', null, 200);
         } catch (\Exception $e) {
             Log::error('Profile fetch failed', [
                 'user_id' => $user->id,
@@ -118,7 +118,7 @@ class ProfileController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
-            return $this->successResponse($response, 'Apps data retrieved successfully', 200);
+            return $this->successResponse($response, 'Apps data retrieved successfully', null, 200);
         } catch (\Exception $e) {
             Log::error('Apps data fetch failed', [
                 'user_id' => $user->id,

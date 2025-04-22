@@ -11,6 +11,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use App\Models\RefreshToken;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
 {
@@ -21,16 +22,31 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+        // Rate limiting berdasarkan username dan device ID
+        $rateLimitKey = 'login:' . $request->username . ':' . $request->header('X-Device-ID', 'unknown');
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            \Log::warning('Login rate limit exceeded', [
+                'username' => $request->username,
+                'ip' => $request->ip(),
+                'device_id' => $request->header('X-Device-ID', 'unknown'),
+            ]);
+            return $this->errorResponse('Too many login attempts', 429, null, [
+                'retry_after' => RateLimiter::availableIn($rateLimitKey)
+            ]);
+        }
+
         $validator = Validator::make($request->all(), [
             'username' => 'required|string',
             'password' => 'required|string',
         ]);
 
         if ($validator->fails()) {
+            RateLimiter::increment($rateLimitKey, 60); // Tambah hitungan (1 menit)
             \Log::info('Login failed: Validation error', [
                 'errors' => $validator->errors()->toArray(),
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
+                'device_id' => $request->header('X-Device-ID', 'unknown'),
             ]);
             return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
         }
@@ -39,24 +55,29 @@ class AuthController extends Controller
             'username' => $request->username,
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
+            'device_id' => $request->header('X-Device-ID', 'unknown'),
         ]);
 
         $user = User::where('username', $request->username)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            RateLimiter::increment($rateLimitKey, 60); // Tambah hitungan
             \Log::info('Login failed: Invalid credentials', [
                 'username' => $request->username,
                 'ip' => $request->ip(),
+                'device_id' => $request->header('X-Device-ID', 'unknown'),
             ]);
             return $this->errorResponse('Invalid login credentials', 401);
         }
 
+        RateLimiter::clear($rateLimitKey); // Reset hitungan setelah login sukses
         $accessToken = $user->createToken('auth_token')->plainTextToken;
         $refreshToken = $this->generateRefreshToken($user);
 
         \Log::info('Login success', [
             'user_id' => $user->id,
             'ip' => $request->ip(),
+            'device_id' => $request->header('X-Device-ID', 'unknown'),
         ]);
 
         return $this->successResponse([
@@ -65,7 +86,7 @@ class AuthController extends Controller
             'refresh_token' => $refreshToken->token,
             'user' => $user,
             'expires_at' => Carbon::now()->addDays(7)->toIso8601String(),
-        ], 'Login successful', 200);
+        ], 'Login successful', null, 200);
     }
 
     /**
@@ -122,7 +143,7 @@ class AuthController extends Controller
             'token_type' => 'Bearer',
             'refresh_token' => $newRefreshToken->token,
             'expires_at' => Carbon::now()->addDays(7)->toIso8601String(),
-        ], 'Token refreshed successfully', 200);
+        ], 'Token refreshed successfully', null, 200);
     }
 
     /**
@@ -139,7 +160,7 @@ class AuthController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        return $this->successResponse(null, 'Logged out successfully', 200);
+        return $this->successResponse(null, 'Logged out successfully', null, 200);
     }
 
     /**
@@ -189,7 +210,7 @@ class AuthController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        return $this->successResponse(null, 'Password changed successfully', 200);
+        return $this->successResponse(null, 'Password changed successfully', null, 200);
     }
 
     /**
@@ -235,7 +256,7 @@ class AuthController extends Controller
                     'expires_at' => $token->expires_at ? $token->expires_at->toIso8601String() : null,
                     'last_used_at' => $token->last_used_at ? $token->last_used_at->toIso8601String() : null,
                 ],
-            ], 'Token is valid', 200);
+            ], 'Token is valid', null, 200);
         } catch (\Exception $e) {
             \Log::error('Token validation failed', [
                 'user_id' => $user->id,
