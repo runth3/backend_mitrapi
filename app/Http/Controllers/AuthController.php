@@ -193,6 +193,60 @@ class AuthController extends Controller
     }
 
     /**
+     * Validate the authenticated user's access token.
+     */
+    public function validateToken(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            \Log::info('Token validation failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            // Get the current access token
+            $token = $user->currentAccessToken();
+            if (!$token) {
+                \Log::info('Token validation failed: No active token found', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                ]);
+                return $this->errorResponse('No active token found', 401);
+            }
+
+            \Log::info('Token validation success', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'token_id' => $token->id,
+            ]);
+
+            return $this->successResponse([
+                'is_valid' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                ],
+                'token' => [
+                    'id' => $token->id,
+                    'expires_at' => $token->expires_at ? $token->expires_at->toIso8601String() : null,
+                    'last_used_at' => $token->last_used_at ? $token->last_used_at->toIso8601String() : null,
+                ],
+            ], 'Token is valid', 200);
+        } catch (\Exception $e) {
+            \Log::error('Token validation failed', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Internal server error', 500, $e->getMessage());
+        }
+    }
+
+    /**
      * Generate a new refresh token for the user.
      */
     protected function generateRefreshToken(User $user): RefreshToken

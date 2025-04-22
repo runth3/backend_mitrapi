@@ -13,8 +13,8 @@ use App\Http\Controllers\UserController;
 
 // Public routes
 Route::prefix('auth')->group(function () {
-    Route::post('login', [AuthController::class, 'login'])->name('login');
-    Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token');
+    Route::post('login', [AuthController::class, 'login'])->name('login')->middleware('throttle:10,1');
+    Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token')->middleware('throttle:10,1');
 });
 
 Route::get('version/check', [VersionController::class, 'checkVersion'])->name('version.check');
@@ -25,6 +25,7 @@ Route::middleware('api.auth')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
         Route::post('change-password', [AuthController::class, 'changePassword'])->name('change-password');
+        Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token');
     });
 
     // Profile
