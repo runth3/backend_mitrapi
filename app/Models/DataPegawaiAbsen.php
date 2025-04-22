@@ -9,8 +9,8 @@ class DataPegawaiAbsen extends Model
 {
     use HasFactory;
 
-    protected $connection = 'mysql_absen'; // Use the absen database connection
-    protected $table = 'vd_data_identitas_pegawai'; // Replace with the actual table name
+    protected $connection = 'mysql_simpeg';
+    protected $table = 'vd_data_identitas_pegawai';
 
     protected $fillable = [
         'id_pegawai',
@@ -31,7 +31,6 @@ class DataPegawaiAbsen extends Model
         'no_telp',
     ];
 
-    // Hide fields that are not in the fillable array
     protected $hidden = [
         'nip9',
         'title',
@@ -73,5 +72,23 @@ class DataPegawaiAbsen extends Model
         'del_on',
         'del_by',
     ];
-   
+
+    public function officeAbsen()
+    {
+        return $this->belongsTo(DataOfficeAbsen::class, 'id_instansi', 'id_instansi');
+    }
+
+    // Catatan: Relasi officeAbsen diperlukan untuk ProfileController
+    // Jika ada relasi lain yang dihilangkan (misalnya ke unit kerja atau jabatan), konfirmasi kebutuhannya
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
+                $model->setTable('simpeg_vd_data_identitas_pegawai');
+            }
+        });
+    }
 }

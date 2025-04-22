@@ -10,9 +10,7 @@
             <v-menu>
                 <template v-slot:activator="{ props }">
                     <v-btn icon v-bind="props">
-                        <v-avatar size="32" color="grey-darken-1">
-                            <v-icon size="32">mdi-account</v-icon>
-                        </v-avatar>
+                        <BaseAvatar />
                     </v-btn>
                 </template>
                 <v-list>
@@ -23,20 +21,29 @@
                         }}</v-list-item-subtitle>
                     </v-list-item>
                     <v-divider></v-divider>
-                    <v-list-item @click="handleLogout">
-                        <v-list-item-title>Logout</v-list-item-title>
-                        <template v-slot:prepend>
-                            <v-icon>mdi-logout</v-icon>
-                        </template>
+                    <v-list-item>
+                        <v-list-item-title>Theme</v-list-item-title>
+                        <v-list-item-subtitle>
+                            <ThemeSelector />
+                        </v-list-item-subtitle>
+                    </v-list-item>
+                    <v-divider></v-divider>
+                    <v-list-item>
+                        <BaseButton
+                            color="error"
+                            variant="text"
+                            prepend-icon="mdi-logout"
+                            @click="handleLogout"
+                        >
+                            Logout
+                        </BaseButton>
                     </v-list-item>
                 </v-list>
             </v-menu>
         </v-app-bar>
 
-        <!-- Sidebar -->
-        <Sidebar :menu-items="menuItems" v-model="drawer" />
+        <Sidebar :menu-items="activeMenuItems" v-model="drawer" />
 
-        <!-- Main Content -->
         <v-main>
             <v-container fluid>
                 <slot></slot>
@@ -46,8 +53,16 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, ref, computed } from "vue";
+import { useRouter } from "vue-router";
 import Sidebar from "@/components/Sidebar.vue";
+import BaseButton from "@/components/BaseButton.vue";
+import BaseAvatar from "@/components/BaseAvatar.vue"; // Impor BaseAvatar
+import ThemeSelector from "@/components/ThemeSelector.vue";
+import { useAuth } from "@/composables/useAuth";
+import { useAppTheme } from "@/composables/useTheme";
+import { useUser } from "@/composables/useUser";
+import { adminMenuItems, userMenuItems } from "@/config/menu";
 
 interface MenuItem {
     title: string;
@@ -59,6 +74,9 @@ export default defineComponent({
     name: "DefaultLayout",
     components: {
         Sidebar,
+        BaseButton,
+        BaseAvatar, // Tambahkan BaseAvatar
+        ThemeSelector,
     },
     props: {
         title: {
@@ -70,40 +88,36 @@ export default defineComponent({
             required: true,
         },
     },
-    data() {
-        return {
-            drawer: true,
-            userName: "",
-            userEmail: "",
-        };
-    },
-    methods: {
-        handleLogout() {
-            localStorage.removeItem("token");
-            localStorage.removeItem("userData");
-            this.$emit("logout");
-        },
-        loadUserData() {
-            const userData = localStorage.getItem("userData");
-            if (userData) {
-                const parsedUserData = JSON.parse(userData);
-                this.userName = parsedUserData.name;
-                this.userEmail = parsedUserData.email;
+    setup() {
+        const router = useRouter();
+        const { logout, isAdmin } = useAuth();
+        const { currentTheme } = useAppTheme();
+        const { userName, userEmail } = useUser();
+        const drawer = ref(true);
+
+        const isDarkTheme = computed(() => currentTheme.value === "night");
+
+        const activeMenuItems = computed(() => {
+            return isAdmin.value ? adminMenuItems : userMenuItems;
+        });
+
+        async function handleLogout() {
+            try {
+                await logout();
+                router.push({ name: "Login" });
+            } catch (err) {
+                console.error("Logout failed:", err);
             }
-        },
-    },
-    mounted() {
-        this.loadUserData();
+        }
+
+        return {
+            drawer,
+            userName,
+            userEmail,
+            activeMenuItems,
+            isDarkTheme,
+            handleLogout,
+        };
     },
 });
 </script>
-
-<style scoped>
-.v-navigation-drawer {
-    background-color: var(--v-theme-background);
-}
-
-.v-list-item--active {
-    background-color: var(--v-theme-primary-lighten-2);
-}
-</style>

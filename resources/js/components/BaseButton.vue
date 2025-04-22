@@ -1,42 +1,84 @@
 <template>
     <v-btn
-        :type="type || 'button'"
-        :color="color || 'primary'"
+        :color="color"
+        :size="size"
+        :variant="variant"
+        :disabled="disabled"
+        :loading="loading"
         :block="block"
-        :elevation="elevation"
-        class="rounded-pill py-3 px-6 text-body-large"
-        :style="{ minHeight: '56px', minWidth: '300px' }"
+        :prepend-icon="prependIcon"
+        :append-icon="appendIcon"
+        :rounded="rounded"
+        :class="['v-btn-custom', customClass]"
+        @click="$emit('click')"
     >
         <slot />
     </v-btn>
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, PropType } from "vue";
 
 export default defineComponent({
     name: "BaseButton",
     props: {
-        type: {
-            type: String,
-            default: "button", // Default type is "button"
-        },
         color: {
             type: String,
-            default: "primary", // Default color is "primary"
+            default: "primary",
+        },
+        size: {
+            type: String as PropType<
+                "x-small" | "small" | "default" | "large" | "x-large"
+            >,
+            default: "default",
+        },
+        variant: {
+            type: String as PropType<
+                "flat" | "elevated" | "tonal" | "outlined" | "text" | "plain"
+            >,
+            default: "elevated",
+        },
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
+        loading: {
+            type: Boolean,
+            default: false,
         },
         block: {
             type: Boolean,
-            default: true, // Default block is true
+            default: false,
         },
-        elevation: {
-            type: Number,
-            default: 2, // Default elevation is 2
+        customClass: {
+            type: String,
+            default: "",
+        },
+        prependIcon: {
+            type: String,
+            default: undefined,
+        },
+        appendIcon: {
+            type: String,
+            default: undefined,
+        },
+        rounded: {
+            type: String as PropType<"0" | "sm" | "md" | "lg" | "xl" | "pill">,
+            default: "lg",
         },
     },
+    emits: ["click"],
 });
 </script>
 
 <style scoped>
-/* Add any custom styles for the button if needed */
+.v-btn-custom {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+}
+.v-btn-custom :deep(.v-btn__prepend),
+.v-btn-custom :deep(.v-btn__append) {
+    margin-right: 8px;
+    margin-left: 8px;
+}
 </style>

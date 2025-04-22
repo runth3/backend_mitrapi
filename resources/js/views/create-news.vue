@@ -2,7 +2,7 @@
     <default-layout
         title="Create News"
         :menu-items="menuItems"
-        @logout="logout"
+        @logout="handleLogout"
     >
         <v-row>
             <v-col cols="12" md="8" offset-md="2">
@@ -14,95 +14,119 @@
                 />
             </v-col>
         </v-row>
-
-        <!-- Snackbar for notifications -->
         <v-snackbar
             v-model="snackbar"
             :color="snackbarColor"
             :timeout="3000"
-            :top="true"
-            :right="true"
+            location="top"
+            vertical
         >
             {{ snackbarText }}
-            <template v-slot:actions>
-                <v-btn color="white" text @click="snackbar = false">
+            <template #actions>
+                <BaseButton
+                    color="white"
+                    variant="text"
+                    @click="snackbar = false"
+                >
                     Close
-                </v-btn>
+                </BaseButton>
             </template>
         </v-snackbar>
     </default-layout>
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, ref, watch } from "vue";
 import axios from "axios";
-import DefaultLayout from "../layouts/DefaultLayout.vue";
-import NewsForm from "../components/news/NewsForm.vue";
-import { menuItems } from "../config/menu";
+import { useRouter } from "vue-router";
+import DefaultLayout from "@/layouts/DefaultLayout.vue";
+import NewsForm from "@/components/news/NewsForm.vue";
+import BaseButton from "@/components/BaseButton.vue";
+import { useAuth } from "@/composables/useAuth";
+import { adminMenuItems, userMenuItems } from "@/config/menu";
 
 export default defineComponent({
     name: "CreateNews",
     components: {
         DefaultLayout,
         NewsForm,
+        BaseButton,
     },
-    data() {
-        return {
-            loading: false,
-            menuItems,
-            // Snackbar related data
-            snackbar: false,
-            snackbarText: "",
-            snackbarColor: "success",
-        };
-    },
-    methods: {
-        showSnackbar(text: string, color: "success" | "error" = "success") {
-            this.snackbarText = text;
-            this.snackbarColor = color;
-            this.snackbar = true;
-        },
+    setup() {
+        const router = useRouter();
+        const { logout, isAdmin } = useAuth();
+        const loading = ref(false);
+        const snackbar = ref(false);
+        const snackbarText = ref("");
+        const snackbarColor = ref<"success" | "error">("success");
+        const menuItems = ref(isAdmin.value ? adminMenuItems : userMenuItems);
 
-        async handleSubmit(formData: FormData) {
-            this.loading = true;
+        watch(isAdmin, (newValue) => {
+            menuItems.value = newValue ? adminMenuItems : userMenuItems;
+        });
+
+        const showSnackbar = (
+            text: string,
+            color: "success" | "error" = "success"
+        ) => {
+            snackbarText.value = text;
+            snackbarColor.value = color;
+            snackbar.value = true;
+        };
+
+        const handleSubmit = async (formData: FormData) => {
+            loading.value = true;
             try {
                 await axios.post("/api/news", formData, {
                     headers: {
                         Accept: "application/json",
                         Authorization: `Bearer ${localStorage.getItem(
-                            "token"
+                            "auth_token"
                         )}`,
-                        // Don't set Content-Type for FormData
                     },
                 });
-                this.showSnackbar("News created successfully");
-                this.$router.push({ name: "News" });
+                showSnackbar("News created successfully");
+                router.push({ name: "news" });
             } catch (error: any) {
                 console.error("Failed to create news:", error);
-                this.showSnackbar(
+                showSnackbar(
                     error.response?.data?.message || "Failed to create news",
                     "error"
                 );
             } finally {
-                this.loading = false;
+                loading.value = false;
             }
-        },
+        };
 
-        handleCancel() {
-            this.$router.push({ name: "News" });
-        },
+        const handleCancel = () => {
+            router.push({ name: "news" });
+        };
 
-        logout() {
-            localStorage.removeItem("auth_token");
-            this.$router.push({ name: "Login" });
-        },
+        const handleLogout = async () => {
+            try {
+                await logout();
+                router.push({ name: "Login" });
+            } catch (err) {
+                console.error("Logout failed:", err);
+            }
+        };
+
+        return {
+            menuItems,
+            loading,
+            snackbar,
+            snackbarText,
+            snackbarColor,
+            handleSubmit,
+            handleCancel,
+            handleLogout,
+        };
     },
 });
 </script>
 
 <style scoped>
-/* Add any custom styles here */
 .v-snackbar {
-    margin-top: 56px; /* Adjust if you have a different app bar height */
+    margin-top: 56px;
 }
 </style>

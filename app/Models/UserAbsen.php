@@ -9,8 +9,8 @@ class UserAbsen extends Model
 {
     use HasFactory;
 
-    protected $connection = 'mysql_absen'; // Use the absen database connection
-    protected $table = 'vd_staff'; // Replace with the actual table name
+    protected $connection = 'mysql_absen';
+    protected $table = 'vd_staff';
 
     protected $fillable = [
         'id',
@@ -25,10 +25,9 @@ class UserAbsen extends Model
         'full_akses',
     ];
 
-    // Hide sensitive fields from API responses
     protected $hidden = [
-        'pwd',        // Password
-        'auth_token', // Authentication token 
+        'pwd',
+        'auth_token',
         'cre_on',
         'cre_by',
         'upd_on',
@@ -37,8 +36,23 @@ class UserAbsen extends Model
         'online',
         'tgl_expire',
     ];
+
     public function officeAbsen()
     {
         return $this->belongsTo(DataOfficeAbsen::class, 'id_instansi', 'id_instansi');
+    }
+
+    // Catatan: Relasi officeAbsen diperlukan untuk ProfileController (opsional)
+    // Jika ada relasi lain yang dihilangkan, konfirmasi kebutuhannya
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
+                $model->setTable('absen_vd_staff');
+            }
+        });
     }
 }

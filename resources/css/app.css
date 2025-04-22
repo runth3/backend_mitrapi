@@ -1,5 +1,4 @@
 @import "vuetify/styles";
-@import "@mdi/font/css/materialdesignicons.min.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

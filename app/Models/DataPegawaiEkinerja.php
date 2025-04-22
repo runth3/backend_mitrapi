@@ -9,8 +9,8 @@ class DataPegawaiEkinerja extends Model
 {
     use HasFactory;
 
-    protected $connection = 'mysql_ekin'; // Use the ekinerja database connection
-    protected $table = 'vd_data_identitas_pegawai'; // Replace with the actual table name
+    protected $connection = 'mysql_ekin';
+    protected $table = 'vd_data_identitas_pegawai';
 
     protected $fillable = [
         'id_pegawai',
@@ -30,8 +30,7 @@ class DataPegawaiEkinerja extends Model
         'alamat',
         'no_telp',
     ];
-    
-    // Hide fields that are not in the fillable array
+
     protected $hidden = [
         'nip9',
         'title',
@@ -73,4 +72,23 @@ class DataPegawaiEkinerja extends Model
         'del_on',
         'del_by',
     ];
+
+    public function officeEkinerja()
+    {
+        return $this->belongsTo(DataOfficeEkinerja::class, 'id_instansi', 'id');
+    }
+
+    // Catatan: Relasi officeEkinerja diperlukan untuk ProfileController
+    // Jika ada relasi lain yang dihilangkan (misalnya ke unit kerja atau jabatan), konfirmasi kebutuhannya
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
+                $model->setTable('ekin_vd_data_identitas_pegawai');
+            }
+        });
+    }
 }

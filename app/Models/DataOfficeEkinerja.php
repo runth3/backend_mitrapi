@@ -9,8 +9,8 @@ class DataOfficeEkinerja extends Model
 {
     use HasFactory;
 
-    protected $connection = 'mysql_ekin'; // Use the ekinerja database connection
-    protected $table = 'opd'; // Replace with the actual table name
+    protected $connection = 'mysql_ekin';
+    protected $table = 'opd';
 
     protected $fillable = [
         'id',
@@ -24,4 +24,33 @@ class DataOfficeEkinerja extends Model
         'menit_kerja',
         'menit_kerja_harian',
     ];
+
+    // Relasi: Tidak ada relasi eksplisit saat ini
+    // Catatan: Jika ada relasi hasMany ke DataPegawaiEkinerja atau UserEkinerja yang dihilangkan, tambahkan kembali jika diperlukan
+    // Contoh relasi yang mungkin dihilangkan:
+    /*
+    public function pegawai()
+    {
+        return $this->hasMany(DataPegawaiEkinerja::class, 'id_instansi', 'id');
+    }
+    public function users()
+    {
+        return $this->hasMany(UserEkinerja::class, 'opd_id', 'id');
+    }
+    */
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
+            }
+        });
+        static::updating(function ($model) {
+            if (app()->environment('testing')) {
+                $model->setConnection('sqlite');
+            }
+        });
+    }
 }

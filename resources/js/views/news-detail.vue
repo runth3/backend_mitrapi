@@ -2,11 +2,11 @@
     <default-layout
         title="News Detail"
         :menu-items="menuItems"
-        @logout="logout"
+        @logout="handleLogout"
     >
         <v-row>
             <v-col cols="12">
-                <v-card v-if="news">
+                <v-card class="dashboard-card" elevation="3" v-if="news">
                     <v-card-title>{{ news.title }}</v-card-title>
                     <v-card-text>
                         <v-img
@@ -18,7 +18,8 @@
                         ></v-img>
                         <p>{{ news.content }}</p>
                         <p>
-                            <strong>Published on:</strong> {{ news.created_at }}
+                            <strong>Published on:</strong>
+                            {{ formatDate(news.created_at) }}
                         </p>
                     </v-card-text>
                 </v-card>
@@ -28,29 +29,35 @@
                 ></v-skeleton-loader>
             </v-col>
         </v-row>
-
         <v-snackbar
             v-model="snackbar"
             :color="snackbarColor"
             :timeout="3000"
-            :top="true"
-            :right="true"
+            location="top"
+            vertical
         >
             {{ snackbarText }}
-            <template v-slot:actions>
-                <v-btn color="white" text @click="snackbar = false">
+            <template #actions>
+                <BaseButton
+                    color="white"
+                    variant="text"
+                    @click="snackbar = false"
+                >
                     Close
-                </v-btn>
+                </BaseButton>
             </template>
         </v-snackbar>
     </default-layout>
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, ref, watch } from "vue";
 import axios from "axios";
-import DefaultLayout from "../layouts/DefaultLayout.vue";
-import { menuItems } from "../config/menu";
+import { useRoute, useRouter } from "vue-router";
+import DefaultLayout from "@/layouts/DefaultLayout.vue";
+import BaseButton from "@/components/BaseButton.vue";
+import { useAuth } from "@/composables/useAuth";
+import { adminMenuItems, userMenuItems } from "@/config/menu";
 
 interface NewsDetail {
     id: number;
@@ -64,126 +71,109 @@ export default defineComponent({
     name: "NewsDetail",
     components: {
         DefaultLayout,
+        BaseButton,
     },
-    data() {
-        return {
-            news: null as NewsDetail | null,
-            loading: false,
-            menuItems,
-            snackbar: false,
-            snackbarText: "",
-            snackbarColor: "success",
-            isAuthenticated: false,
+    setup() {
+        const route = useRoute();
+        const router = useRouter();
+        const { logout, isAdmin } = useAuth();
+        const news = ref<NewsDetail | null>(null);
+        const loading = ref(false);
+        const snackbar = ref(false);
+        const snackbarText = ref("");
+        const snackbarColor = ref<"success" | "error">("success");
+        const menuItems = ref(isAdmin.value ? adminMenuItems : userMenuItems);
+
+        watch(isAdmin, (newValue) => {
+            menuItems.value = newValue ? adminMenuItems : userMenuItems;
+        });
+
+        const formatDate = (dateString: string) => {
+            const date = new Date(dateString);
+            return date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            });
         };
-    },
-    methods: {
-        showSnackbar(text: string, color: "success" | "error" = "success") {
-            this.snackbarText = text;
-            this.snackbarColor = color;
-            this.snackbar = true;
-        },
 
-        async checkAuth() {
-            const token = localStorage.getItem("token");
-            if (!token) {
-                this.$router.push({ name: "Login" });
-                return false;
-            }
+        const showSnackbar = (
+            text: string,
+            color: "success" | "error" = "success"
+        ) => {
+            snackbarText.value = text;
+            snackbarColor.value = color;
+            snackbar.value = true;
+        };
 
+        const fetchNewsDetail = async () => {
+            loading.value = true;
             try {
-                const response = await axios.get("/api/user", {
-                    headers: {
-                        Accept: "application/json",
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (response.data) {
-                    this.isAuthenticated = true;
-                    return true;
-                }
-
-                this.logout();
-                return false;
-            } catch (error) {
-                console.error("Authentication check failed:", error);
-                this.logout();
-                return false;
-            }
-        },
-
-        async fetchNewsDetail() {
-            if (!(await this.checkAuth())) {
-                return;
-            }
-
-            this.loading = true;
-            try {
-                const id = this.$route.params.id;
+                const id = route.params.id;
                 const response = await axios.get(`/api/news/${id}`, {
                     headers: {
                         Accept: "application/json",
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${localStorage.getItem(
-                            "token"
+                            "auth_token"
                         )}`,
                     },
                 });
-                this.news = response.data;
+                news.value = response.data;
             } catch (error: any) {
                 console.error("Failed to fetch news detail:", error);
                 if (error.response?.status === 401) {
-                    this.logout();
+                    handleLogout();
                     return;
                 }
-                this.showSnackbar(
+                showSnackbar(
                     error.response?.data?.message ||
                         "Failed to fetch news detail",
                     "error"
                 );
             } finally {
-                this.loading = false;
+                loading.value = false;
             }
-        },
+        };
 
-        logout() {
-            localStorage.removeItem("token");
-            this.$router.push({ name: "Login" });
-        },
-
-        async initializePage() {
-            this.loading = true;
+        const handleLogout = async () => {
             try {
-                const isAuthed = await this.checkAuth();
-                if (isAuthed) {
-                    await this.fetchNewsDetail();
-                } else {
-                    this.showSnackbar("Please login to continue", "error");
-                    this.$router.push({ name: "Login" });
-                }
-            } catch (error) {
-                console.error("Initialization error:", error);
-                this.showSnackbar("Failed to initialize page", "error");
-            } finally {
-                this.loading = false;
+                await logout();
+                router.push({ name: "Login" });
+            } catch (err) {
+                console.error("Logout failed:", err);
             }
-        },
-    },
-    async created() {
-        await this.initializePage();
-    },
-    beforeRouteEnter(to: any, from: any, next: Function) {
-        if (!localStorage.getItem("token")) {
-            next({ name: "Login" });
-        } else {
-            next();
-        }
-    },
-    // Handle route parameter changes without full component reload
-    async beforeRouteUpdate(to: any, from: any, next: Function) {
-        next();
-        await this.fetchNewsDetail();
+        };
+
+        const initializePage = async () => {
+            const token = localStorage.getItem("auth_token");
+            if (!token) {
+                showSnackbar("Please login to continue", "error");
+                router.push({ name: "Login" });
+                return;
+            }
+            await fetchNewsDetail();
+        };
+
+        initializePage();
+
+        watch(
+            () => route.params.id,
+            () => {
+                fetchNewsDetail();
+            }
+        );
+
+        return {
+            menuItems,
+            news,
+            loading,
+            snackbar,
+            snackbarText,
+            snackbarColor,
+            handleLogout,
+            formatDate,
+        };
     },
 });
 </script>
@@ -195,5 +185,14 @@ export default defineComponent({
 
 .v-card-text {
     white-space: pre-line;
+}
+
+/* Background card dinamis berdasarkan tema */
+:root[data-theme="normal"] .dashboard-card,
+:root[data-theme="singleTone"] .dashboard-card {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+:root[data-theme="night"] .dashboard-card {
+    background-color: rgba(46, 46, 46, 0.9);
 }
 </style>

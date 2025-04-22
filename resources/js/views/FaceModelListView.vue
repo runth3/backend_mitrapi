@@ -2,15 +2,14 @@
     <default-layout
         title="Face Model List"
         :menu-items="menuItems"
-        @logout="logout"
+        @logout="handleLogout"
     >
         <v-container v-if="userId">
-            <v-card>
-                <v-card-title v-if="userDetails"
-                    >Face Models: {{ userDetails.username }}/{{
-                        userDetails.name
-                    }}</v-card-title
-                >
+            <v-card class="dashboard-card" elevation="3">
+                <v-card-title v-if="userDetails">
+                    Face Models: {{ userDetails.username }} /
+                    {{ userDetails.name }}
+                </v-card-title>
                 <v-card-text>
                     <!-- Upload Section -->
                     <v-row class="mt-4">
@@ -23,7 +22,7 @@
                                 class="mt-4"
                                 @change="handleImageChange"
                             ></v-file-input>
-                            <v-btn
+                            <BaseButton
                                 color="primary"
                                 class="mt-2"
                                 :loading="uploading"
@@ -31,7 +30,7 @@
                                 @click="handleUpload"
                             >
                                 Upload
-                            </v-btn>
+                            </BaseButton>
                         </v-col>
                     </v-row>
 
@@ -165,10 +164,12 @@
 <script lang="ts">
 import { defineComponent, ref, watch, onMounted } from "vue";
 import axios from "axios";
-import DefaultLayout from "../layouts/DefaultLayout.vue";
-import { menuItems } from "../config/menu";
 import { useRoute, useRouter } from "vue-router";
-import FaceModelImageView from "./FaceModelImageView.vue";
+import DefaultLayout from "@/layouts/DefaultLayout.vue";
+import FaceModelImageView from "@/views/FaceModelImageView.vue";
+import BaseButton from "@/components/BaseButton.vue";
+import { useAuth } from "@/composables/useAuth";
+import { adminMenuItems, userMenuItems } from "@/config/menu";
 
 interface FaceModel {
     id: number;
@@ -187,11 +188,13 @@ export default defineComponent({
     components: {
         DefaultLayout,
         FaceModelImageView,
+        BaseButton,
     },
     setup() {
         const userId = ref<number | null>(null);
         const route = useRoute();
         const router = useRouter();
+        const { logout, isAdmin } = useAuth();
         const loading = ref(true);
         const toggleLoading = ref(false);
         const uploading = ref(false);
@@ -200,67 +203,16 @@ export default defineComponent({
         const selectedFaceModelId = ref<number | null>(null);
         const imageFile = ref<File | null>(null);
         const fileInput = ref<any>(null);
-        const imageBlobs = ref<{ [key: number]: string }>({}); // Simpan URL blob untuk setiap gambar
+        const imageBlobs = ref<{ [key: number]: string }>({});
         const userDetails = ref<UserDetails | null>(null);
+        const menuItems = ref(isAdmin.value ? adminMenuItems : userMenuItems);
 
-        // Fungsi untuk memformat tanggal
-        const formatDate = (dateString: string) => {
-            const date = new Date(dateString);
-            return date.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-            }); // Contoh: "Apr 3, 2025"
-        };
+        // Watch perubahan isAdmin untuk memperbarui menu
+        watch(isAdmin, (newValue) => {
+            menuItems.value = newValue ? adminMenuItems : userMenuItems;
+        });
 
-        // Fungsi untuk mengambil gambar sebagai blob
-        const fetchImage = async (faceModelId: number) => {
-            try {
-                const response = await axios.get(
-                    `/api/face-model/${faceModelId}`,
-                    {
-                        headers: {
-                            Accept: "application/json",
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${localStorage.getItem(
-                                "token"
-                            )}`,
-                        },
-                        responseType: "blob", // Untuk gambar
-                    }
-                );
-                const blobUrl = URL.createObjectURL(response.data);
-                imageBlobs.value[faceModelId] = blobUrl;
-                console.log(`Image fetched for ID ${faceModelId}:`, blobUrl);
-            } catch (error) {
-                console.error(
-                    `Failed to fetch image for ID ${faceModelId}:`,
-                    error
-                );
-            }
-        };
-
-        const fetchUserDetails = async () => {
-            if (!userId.value) return;
-            try {
-                const response = await axios.get(`/api/users/${userId.value}`, {
-                    headers: {
-                        Accept: "application/json",
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem(
-                            "token"
-                        )}`,
-                    },
-                });
-                userDetails.value = {
-                    username: response.data.user.username,
-                    name: response.data.user.name,
-                };
-            } catch (error) {
-                console.error("Failed to fetch user details:", error);
-            }
-        };
-
+        // Watch perubahan route params
         watch(
             () => route.params.id,
             (newId) => {
@@ -268,7 +220,6 @@ export default defineComponent({
                     const parsedId = parseInt(newId as string, 10);
                     if (!isNaN(parsedId)) {
                         userId.value = parsedId;
-                        console.log("userId set to:", userId.value);
                         fetchUserDetails();
                     } else {
                         userId.value = null;
@@ -285,6 +236,61 @@ export default defineComponent({
             { immediate: true }
         );
 
+        const formatDate = (dateString: string) => {
+            const date = new Date(dateString);
+            return date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            });
+        };
+
+        const fetchImage = async (faceModelId: number) => {
+            try {
+                const response = await axios.get(
+                    `/api/face-model/${faceModelId}`,
+                    {
+                        headers: {
+                            Accept: "application/json",
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem(
+                                "auth_token"
+                            )}`,
+                        },
+                        responseType: "blob",
+                    }
+                );
+                const blobUrl = URL.createObjectURL(response.data);
+                imageBlobs.value[faceModelId] = blobUrl;
+            } catch (error) {
+                console.error(
+                    `Failed to fetch image for ID ${faceModelId}:`,
+                    error
+                );
+            }
+        };
+
+        const fetchUserDetails = async () => {
+            if (!userId.value) return;
+            try {
+                const response = await axios.get(`/api/users/${userId.value}`, {
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem(
+                            "auth_token"
+                        )}`,
+                    },
+                });
+                userDetails.value = {
+                    username: response.data.user.username,
+                    name: response.data.user.name,
+                };
+            } catch (error) {
+                console.error("Failed to fetch user details:", error);
+            }
+        };
+
         const fetchFaceModels = async () => {
             if (!userId.value) return;
             loading.value = true;
@@ -296,16 +302,12 @@ export default defineComponent({
                             Accept: "application/json",
                             "Content-Type": "application/json",
                             Authorization: `Bearer ${localStorage.getItem(
-                                "token"
+                                "auth_token"
                             )}`,
                         },
                     }
                 );
-                console.log("API Response:", response.data);
                 faceModels.value = response.data;
-                console.log("faceModels after fetch:", faceModels.value);
-
-                // Fetch gambar untuk setiap face model
                 for (const model of faceModels.value) {
                     await fetchImage(model.id);
                 }
@@ -322,7 +324,7 @@ export default defineComponent({
         ) => {
             toggleLoading.value = true;
             try {
-                const response = await axios.put(
+                await axios.put(
                     `/api/face-model/${faceModelId}/set-active`,
                     {},
                     {
@@ -330,13 +332,12 @@ export default defineComponent({
                             Accept: "application/json",
                             "Content-Type": "application/json",
                             Authorization: `Bearer ${localStorage.getItem(
-                                "token"
+                                "auth_token"
                             )}`,
                         },
                     }
                 );
-                console.log("Toggle Response:", response.data);
-                fetchFaceModels(); // Refresh data termasuk gambar
+                fetchFaceModels();
             } catch (error) {
                 console.error("Failed to update face model:", error);
             } finally {
@@ -348,10 +349,6 @@ export default defineComponent({
             const input = event.target as HTMLInputElement;
             if (input.files && input.files.length > 0) {
                 const file = input.files[0];
-                console.log("Selected file:", file);
-                console.log("File type:", file.type);
-                console.log("File size:", file.size);
-
                 if (
                     !["image/jpeg", "image/png", "image/jpg"].includes(
                         file.type
@@ -363,7 +360,6 @@ export default defineComponent({
                 }
                 imageFile.value = file;
             } else {
-                console.warn("No file selected.");
                 imageFile.value = null;
             }
         };
@@ -375,24 +371,19 @@ export default defineComponent({
                 const formData = new FormData();
                 formData.append("image", imageFile.value);
                 formData.append("user_id", userId.value.toString());
-                const response = await axios.post("/api/face-model", formData, {
+                await axios.post("/api/face-model", formData, {
                     headers: {
                         "Content-Type": "multipart/form-data",
                         Authorization: `Bearer ${localStorage.getItem(
-                            "token"
+                            "auth_token"
                         )}`,
                     },
                 });
-                console.log("Upload successful:", response.data);
                 fetchFaceModels();
                 imageFile.value = null;
                 fileInput.value.reset();
-            } catch (error: any) {
+            } catch (error) {
                 console.error("Failed to upload face model:", error);
-                if (error.response) {
-                    console.error("Error Response:", error.response);
-                    console.error("Error Response Data:", error.response.data);
-                }
             } finally {
                 uploading.value = false;
             }
@@ -410,35 +401,33 @@ export default defineComponent({
                         Accept: "application/json",
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${localStorage.getItem(
-                            "token"
+                            "auth_token"
                         )}`,
                     },
                 });
-                console.log("Face model deleted:", faceModelId);
                 fetchFaceModels();
             } catch (error) {
                 console.error("Failed to delete face model:", error);
             }
         };
 
-        const handleThumbnailError = (model: FaceModel) => {
-            console.error(`Failed to load thumbnail for model ID: ${model.id}`);
-        };
-
-        const logout = () => {
-            localStorage.removeItem("token");
-            router.push({ name: "Login" });
+        const handleLogout = async () => {
+            try {
+                await logout();
+                router.push({ name: "Login" });
+            } catch (err) {
+                console.error("Logout failed:", err);
+            }
         };
 
         onMounted(() => {
-            console.log("Component mounted, fetching face models...");
             fetchFaceModels();
         });
 
         return {
             menuItems,
             userId,
-            logout,
+            handleLogout,
             loading,
             toggleLoading,
             uploading,
@@ -453,62 +442,50 @@ export default defineComponent({
             handleUpload,
             handleDelete,
             formatDate,
-            handleThumbnailError,
             imageBlobs,
-            fetchImage,
             userDetails,
         };
     },
 });
 </script>
+
 <style scoped>
 .image-card {
     background-size: cover;
     background-position: center;
-    height: 200px; /* Fixed height for 1:1 ratio */
-    width: 200px; /* Fixed width for 1:1 ratio */
+    height: 200px;
+    width: 200px;
     position: relative;
     color: white;
-    margin: 0 auto; /* Center the card horizontally in its column */
+    margin: 0 auto;
 }
 
-/* Ensure the card maintains 1:1 aspect ratio */
 .image-card::after {
     content: "";
     display: block;
-    padding-bottom: 100%; /* Creates 1:1 aspect ratio */
+    padding-bottom: 100%;
 }
 
-/* Efek untuk card yang aktif */
 .active-card {
-    border: 2px solid #4caf50; /* Warna hijau untuk menandakan aktif */
+    border: 2px solid #4caf50;
     transition: all 0.3s ease;
 }
 
-/* Hover effect untuk card */
 .v-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
 }
 
-/* Jarak antar card */
 .v-row > .v-col {
     padding: 12px;
 }
 
-/* Styling untuk tombol */
 .v-btn {
-    margin: 0 8px; /* Jarak antar tombol */
-    background-color: rgba(
-        255,
-        255,
-        255,
-        0.8
-    ); /* Latar tombol semi-transparan */
+    margin: 0 8px;
+    background-color: rgba(255, 255, 255, 0.8);
 }
 
-/* Overlay untuk meningkatkan keterbacaan */
 .image-card::before {
     content: "";
     position: absolute;
@@ -516,17 +493,15 @@ export default defineComponent({
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.3); /* Overlay gelap untuk kontras */
+    background: rgba(0, 0, 0, 0.3);
     z-index: 0;
 }
 
-/* Pastikan konten di atas overlay */
 .v-row {
     position: relative;
     z-index: 1;
 }
 
-/* Style for date at bottom right */
 .date-container {
     position: absolute;
     bottom: 0;
@@ -538,13 +513,17 @@ export default defineComponent({
     font-style: italic;
     font-size: 0.875rem;
     color: white;
-    background-color: rgba(
-        0,
-        0,
-        0,
-        0.5
-    ); /* Slight background for readability */
+    background-color: rgba(0, 0, 0, 0.5);
     padding: 2px 6px;
     margin: 0;
+}
+
+/* Background card dinamis berdasarkan tema */
+:root[data-theme="normal"] .dashboard-card,
+:root[data-theme="singleTone"] .dashboard-card {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+:root[data-theme="night"] .dashboard-card {
+    background-color: rgba(46, 46, 46, 0.9);
 }
 </style>
