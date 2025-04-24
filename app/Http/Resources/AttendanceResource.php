@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class AttendanceResource extends JsonResource
@@ -22,7 +23,7 @@ class AttendanceResource extends JsonResource
             'id_unit_kerja' => $this->id_unit_kerja,
             'id_profile' => $this->id_profile,
             'date' => $this->date,
-            'checktime' => $this->checktime ? Carbon\Carbon::parse($this->checktime)->toIso8601String() : null,
+            'checktime' => $this->checktime ? Carbon::parse($this->checktime)->toIso8601String() : null,
             'checktype' => $this->checktype,
             'iplog' => $this->iplog,
             'coordinate' => $this->coordinate,
@@ -33,9 +34,9 @@ class AttendanceResource extends JsonResource
             'browser_version' => $this->browser_version,
             'aprv_stats' => $this->aprv_stats,
             'aprv_by' => $this->aprv_by,
-            'aprv_on' => $this->aprv_on ? Carbon\Carbon::parse($this->aprv_on)->toIso8601String() : null,
+            'aprv_on' => $this->aprv_on ? Carbon::parse($this->aprv_on)->toIso8601String() : null,
             'reject_by' => $this->reject_by,
-            'reject_on' => $this->reject_on ? Carbon\Carbon::parse($this->reject_on)->toIso8601String() : null,
+            'reject_on' => $this->reject_on ? Carbon::parse($this->reject_on)->toIso8601String() : null,
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
         ];
