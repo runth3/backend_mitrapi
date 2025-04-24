@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Log;
 
 class AttendanceResource extends JsonResource
 {
@@ -15,6 +16,22 @@ class AttendanceResource extends JsonResource
      */
     public function toArray($request)
     {
+        // Log jika ada field tanggal yang null
+        $nullFields = [];
+        if (is_null($this->checktime)) $nullFields[] = 'checktime';
+        if (is_null($this->aprv_on)) $nullFields[] = 'aprv_on';
+        if (is_null($this->reject_on)) $nullFields[] = 'reject_on';
+        if (is_null($this->created_at)) $nullFields[] = 'created_at';
+        if (is_null($this->updated_at)) $nullFields[] = 'updated_at';
+
+        if (!empty($nullFields)) {
+            Log::warning('Null timestamp fields detected in AttendanceResource', [
+                'attendance_id' => $this->id,
+                'nip_pegawai' => $this->nip_pegawai,
+                'null_fields' => $nullFields,
+            ]);
+        }
+
         return [
             'id' => $this->id,
             'id_checkinout' => $this->id_checkinout,
@@ -37,8 +54,8 @@ class AttendanceResource extends JsonResource
             'aprv_on' => $this->aprv_on ? Carbon::parse($this->aprv_on)->toIso8601String() : null,
             'reject_by' => $this->reject_by,
             'reject_on' => $this->reject_on ? Carbon::parse($this->reject_on)->toIso8601String() : null,
-            'created_at' => $this->created_at->toIso8601String(),
-            'updated_at' => $this->updated_at->toIso8601String(),
+            'created_at' => $this->created_at ? Carbon::parse($this->created_at)->toIso8601String() : null,
+            'updated_at' => $this->updated_at ? Carbon::parse($this->updated_at)->toIso8601String() : null,
         ];
     }
 }
