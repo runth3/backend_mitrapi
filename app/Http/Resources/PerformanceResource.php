@@ -2,7 +2,9 @@
 
 namespace App\Http\Resources;
 
+use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Log;
 
 class PerformanceResource extends JsonResource
 {
@@ -14,6 +16,19 @@ class PerformanceResource extends JsonResource
      */
     public function toArray($request)
     {
+        // Log jika created_at atau updated_at null
+        $nullFields = [];
+        if (is_null($this->created_at)) $nullFields[] = 'created_at';
+        if (is_null($this->updated_at)) $nullFields[] = 'updated_at';
+
+        if (!empty($nullFields)) {
+            Log::warning('Null timestamp fields detected in PerformanceResource', [
+                'performance_id' => $this->id,
+                'NIP' => $this->NIP,
+                'null_fields' => $nullFields,
+            ]);
+        }
+
         return [
             'id' => $this->id,
             'nama' => $this->nama,
@@ -29,8 +44,8 @@ class PerformanceResource extends JsonResource
             'target' => $this->target,
             'satuanTarget' => $this->satuanTarget,
             'NIP' => $this->NIP,
-            'created_at' => $this->created_at->toIso8601String(),
-            'updated_at' => $this->updated_at->toIso8601String(),
+            'created_at' => $this->created_at ? Carbon::parse($this->created_at)->toIso8601String() : null,
+            'updated_at' => $this->updated_at ? Carbon::parse($this->updated_at)->toIso8601String() : null,
         ];
     }
 }
