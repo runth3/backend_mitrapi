@@ -15,7 +15,9 @@ use App\Http\Controllers\UserController;
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->name('login');
     Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token');
+    Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token'); // Pindah ke publik
 });
+
 // Public routes
 Route::prefix('news')->group(function () {
     Route::get('latest', [NewsController::class, 'latest'])->name('news.latest');
@@ -29,7 +31,6 @@ Route::middleware('api.auth')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
         Route::post('change-password', [AuthController::class, 'changePassword'])->name('change-password');
-        Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token');
     });
 
     // Profile
@@ -55,7 +56,6 @@ Route::middleware('api.auth')->group(function () {
         Route::post('upload-photo', [AttendanceController::class, 'uploadPhoto'])->name('attendances.upload-photo');
     });
 
-    
     // Face Models
     Route::prefix('face-models')->group(function () {
         Route::get('/', [FaceModelController::class, 'index'])->name('face-models.index');
