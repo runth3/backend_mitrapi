@@ -1,187 +1,552 @@
 <?php
 
 namespace App\Http\Controllers;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+
+use App\Http\Resources\PerformanceResource;
 use App\Models\Attendance;
 use App\Models\Performance;
+use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class PerformanceController extends Controller
 {
-    // List all performances
+    use ApiResponseTrait;
+
+    private const CACHE_DURATION = 300; // 5 menit dalam detik
+
+    /**
+     * List all performances for the authenticated user.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
-        $performances = Performance::where('NIP', $request->user()->NIP)->get();
-        return response()->json($performances);
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Performance list failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $perPage = $request->input('per_page', 20);
+            $performances = Performance::where('NIP', $user->username)
+                ->where('stsDel', 0)
+                ->orderBy('tglKinerja', 'desc')
+                ->paginate($perPage);
+
+            Log::info('Performance list retrieved', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'per_page' => $perPage,
+            ]);
+
+            return $this->successResponse(
+                data: PerformanceResource::collection($performances),
+                message: 'Performance list retrieved successfully',
+                meta: [
+                    'current_page' => $performances->currentPage(),
+                    'per_page' => $performances->perPage(),
+                    'total' => $performances->total(),
+                    'last_page' => $performances->lastPage(),
+                    'from' => $performances->firstItem(),
+                    'to' => $performances->lastItem(),
+                ],
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve performance list', [
+                'user_id' => $user->id ?? 'unknown',
+                'username' => $user->username ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to retrieve performance list', 500, $e->getMessage());
+        }
     }
 
-    // Create a new performance record
+    /**
+     * Create a new performance record.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
-        $user = $request->user();
-
-        $request->validate([
-            'nama' => 'required|string|max:255',
-            'penjelasan' => 'nullable|string',
-            'tglKinerja' => 'required|date',
-            'durasiKinerjaMulai' => 'required|date_format:H:i',
-            'durasiKinerjaSelesai' => 'required|date_format:H:i|after:durasiKinerjaMulai',
-            'tupoksi' => 'nullable|string',
-            'periodeKinerja' => 'nullable|string',
-            'target' => 'nullable|integer',
-            'satuanTarget' => 'nullable|string',
-        ]);
-
-        // Rule 1: tglKinerja must not be in the future
-        if (Carbon::parse($request->tglKinerja)->isFuture()) {
-            return response()->json(['message' => 'tglKinerja cannot be in the future'], 422);
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Performance creation failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
         }
 
-        // Rule 2: tglKinerja must exist in the user's attendance records
-        $attendanceExists = Attendance::where('NIP', $user->NIP)
-            ->where('date', $request->tglKinerja)
-            ->exists();
+        try {
+            $validator = Validator::make($request->all(), [
+                'nama' => 'required|string|max:255',
+                'penjelasan' => 'nullable|string',
+                'tglKinerja' => 'required|date',
+                'durasiKinerjaMulai' => 'required|date_format:H:i',
+                'durasiKinerjaSelesai' => 'required|date_format:H:i|after:durasiKinerjaMulai',
+                'tupoksi' => 'nullable|string',
+                'periodeKinerja' => 'nullable|string',
+                'target' => 'nullable|integer',
+                'satuanTarget' => 'nullable|string',
+            ]);
 
-        if (!$attendanceExists) {
-            return response()->json(['message' => 'tglKinerja must match an attendance record'], 422);
-        }
+            if ($validator->fails()) {
+                Log::info('Performance creation failed: Validation error', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 422, $validator->errors()->toArray());
+            }
 
-        // Calculate durasiKinerja and menitKinerja
-        $start = Carbon::createFromFormat('H:i', $request->durasiKinerjaMulai);
-        $end = Carbon::createFromFormat('H:i', $request->durasiKinerjaSelesai);
-        $durationInMinutes = $end->diffInMinutes($start);
-        $durationString = $end->diff($start)->format('%H:%I');
+            if (Carbon::parse($request->tglKinerja)->isFuture()) {
+                Log::info('Performance creation failed: Future date', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                    'tglKinerja' => $request->tglKinerja,
+                ]);
+                return $this->errorResponse('tglKinerja cannot be in the future', 422);
+            }
 
-        $performance = Performance::create([
-            'nama' => $request->nama,
-            'penjelasan' => $request->penjelasan,
-            'tglKinerja' => $request->tglKinerja,
-            'durasiKinerjaMulai' => $request->durasiKinerjaMulai,
-            'durasiKinerjaSelesai' => $request->durasiKinerjaSelesai,
-            'durasiKinerja' => $durationString,
-            'menitKinerja' => $durationInMinutes,
-            'apv' => 'P', // Set approval status to Pending
-            'tupoksi' => $request->tupoksi,
-            'periodeKinerja' => $request->periodeKinerja,
-            'target' => $request->target,
-            'satuanTarget' => $request->satuanTarget,
-            'NIP' => $user->NIP,
-            'stsDel' => 0, // Default to not deleted
-        ]);
+            $attendanceExists = Attendance::where('nip_pegawai', $user->username)
+                ->where('date', $request->tglKinerja)
+                ->exists();
 
-        return response()->json($performance, 201);
-    }
+            if (!$attendanceExists) {
+                Log::info('Performance creation failed: No attendance record', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                    'tglKinerja' => $request->tglKinerja,
+                ]);
+                return $this->errorResponse('tglKinerja must match an attendance record', 422);
+            }
 
-    // Show a specific performance record
-    public function show($id)
-    {
-        $performance = Performance::findOrFail($id);
-        return response()->json($performance);
-    }
-
-    // Update an existing performance record
-    public function update(Request $request, $id)
-    {
-        $performance = Performance::findOrFail($id);
-
-        // Restrict updates if apv is A (Approved) or R (Rejected)
-        if (in_array($performance->apv, ['A', 'R'])) {
-            return response()->json(['message' => 'Cannot update performance with apv status A or R'], 403);
-        }
-
-        $request->validate([
-            'nama' => 'sometimes|required|string|max:255',
-            'penjelasan' => 'nullable|string',
-            'durasiKinerjaMulai' => 'nullable|date_format:H:i',
-            'durasiKinerjaSelesai' => 'nullable|date_format:H:i|after:durasiKinerjaMulai',
-        ]);
-
-        if ($request->has('durasiKinerjaMulai') && $request->has('durasiKinerjaSelesai')) {
             $start = Carbon::createFromFormat('H:i', $request->durasiKinerjaMulai);
             $end = Carbon::createFromFormat('H:i', $request->durasiKinerjaSelesai);
-            $performance->durasiKinerja = $end->diff($start)->format('%H:%I');
-            $performance->menitKinerja = $end->diffInMinutes($start);
+            $durationInMinutes = $end->diffInMinutes($start);
+            $durationString = $end->diff($start)->format('%H:%I');
+
+            $performance = Performance::create([
+                'nama' => $request->nama,
+                'penjelasan' => $request->penjelasan,
+                'tglKinerja' => $request->tglKinerja,
+                'durasiKinerjaMulai' => $request->durasiKinerjaMulai,
+                'durasiKinerjaSelesai' => $request->durasiKinerjaSelesai,
+                'durasiKinerja' => $durationString,
+                'menitKinerja' => $durationInMinutes,
+                'apv' => 'P',
+                'tupoksi' => $request->tupoksi,
+                'periodeKinerja' => $request->periodeKinerja,
+                'target' => $request->target,
+                'satuanTarget' => $request->satuanTarget,
+                'NIP' => $user->username,
+                'stsDel' => 0,
+            ]);
+
+            Log::info('Performance created successfully', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'performance_id' => $performance->id,
+            ]);
+
+            return $this->successResponse(
+                data: new PerformanceResource($performance),
+                message: 'Performance created successfully',
+                meta: null,
+                statusCode: 201
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to create performance', [
+                'user_id' => $user->id ?? 'unknown',
+                'username' => $user->username ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to create performance', 500, $e->getMessage());
         }
-
-        $performance->update($request->only([
-            'nama',
-            'penjelasan',
-            'durasiKinerjaMulai',
-            'durasiKinerjaSelesai',
-            'tupoksi',
-            'periodeKinerja',
-            'target',
-            'satuanTarget',
-        ]));
-
-        return response()->json($performance);
     }
 
-    // Delete a performance record
-    public function destroy($id)
-    {
-        $performance = Performance::findOrFail($id);
-
-        // Perform a soft delete by setting stsDel to 1
-        $performance->update(['stsDel' => 1]);
-
-        return response()->json(['message' => 'Performance soft deleted successfully']);
-    }
-
-    public function me()
+    /**
+     * Show a specific performance record.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show(Request $request, $id)
     {
         $user = auth()->user();
-
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated'], 401);
+            Log::info('Performance retrieval failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
         }
 
-        $currentMonth = Carbon::now()->format('Y-m');
-        $cacheKey = "performance_{$user->username}_{$currentMonth}";
+        try {
+            $performance = Performance::where('id', $id)
+                ->where('stsDel', 0)
+                ->first();
 
-        // Retrieve performance data from cache or query the database if not cached
-        $monthlyPerformance = Cache::remember($cacheKey, 300, function () use ($user, $currentMonth) {
-            return Performance::where('NIP', $user->username)
-                ->where('tglKinerja', 'like', "$currentMonth%")
-                ->orderBy('tglKinerja', 'asc') // Sort by performance date
-                ->get(); // Retrieve all fields allowed in the model's $fillable
-        });
+            if (!$performance) {
+                Log::info('Performance retrieval failed: Not found', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'performance_id' => $id,
+                ]);
+                return $this->errorResponse('Performance not found', 404);
+            }
 
-        return response()->json([
-            'current_month' => [
-                'month' => $currentMonth,
-                'performances' => $monthlyPerformance,
-            ],
-        ]);
+            Log::info('Performance retrieved successfully', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'performance_id' => $id,
+            ]);
+
+            return $this->successResponse(
+                data: new PerformanceResource($performance),
+                message: 'Performance retrieved successfully',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve performance', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'performance_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to retrieve performance', 500, $e->getMessage());
+        }
     }
 
+    /**
+     * Update an existing performance record.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function update(Request $request, $id)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Performance update failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $performance = Performance::where('id', $id)
+                ->where('stsDel', 0)
+                ->first();
+
+            if (!$performance) {
+                Log::info('Performance update failed: Not found', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'performance_id' => $id,
+                ]);
+                return $this->errorResponse('Performance not found', 404);
+            }
+
+            if (in_array($performance->apv, ['A', 'R'])) {
+                Log::info('Performance update failed: Invalid apv status', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'performance_id' => $id,
+                    'apv' => $performance->apv,
+                ]);
+                return $this->errorResponse('Cannot update performance with apv status A or R', 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'nama' => 'sometimes|required|string|max:255',
+                'penjelasan' => 'nullable|string',
+                'durasiKinerjaMulai' => 'nullable|date_format:H:i',
+                'durasiKinerjaSelesai' => 'nullable|date_format:H:i|after:durasiKinerjaMulai',
+                'tupoksi' => 'nullable|string',
+                'periodeKinerja' => 'nullable|string',
+                'target' => 'nullable|integer',
+                'satuanTarget' => 'nullable|string',
+            ]);
+
+            if ($validator->fails()) {
+                Log::info('Performance update failed: Validation error', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'performance_id' => $id,
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 422, $validator->errors()->toArray());
+            }
+
+            $data = $request->only([
+                'nama',
+                'penjelasan',
+                'durasiKinerjaMulai',
+                'durasiKinerjaSelesai',
+                'tupoksi',
+                'periodeKinerja',
+                'target',
+                'satuanTarget',
+            ]);
+
+            if ($request->has('durasiKinerjaMulai') && $request->has('durasiKinerjaSelesai')) {
+                $start = Carbon::createFromFormat('H:i', $request->durasiKinerjaMulai);
+                $end = Carbon::createFromFormat('H:i', $request->durasiKinerjaSelesai);
+                $data['durasiKinerja'] = $end->diff($start)->format('%H:%I');
+                $data['menitKinerja'] = $end->diffInMinutes($start);
+            }
+
+            $performance->update($data);
+
+            Log::info('Performance updated successfully', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'performance_id' => $id,
+            ]);
+
+            return $this->successResponse(
+                data: new PerformanceResource($performance),
+                message: 'Performance updated successfully',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to update performance', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'performance_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to update performance', 500, $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete a performance record (soft delete).
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy(Request $request, $id)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Performance deletion failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $performance = Performance::where('id', $id)
+                ->where('stsDel', 0)
+                ->first();
+
+            if (!$performance) {
+                Log::info('Performance deletion failed: Not found', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'performance_id' => $id,
+                ]);
+                return $this->errorResponse('Performance not found', 404);
+            }
+
+            $performance->update(['stsDel' => 1]);
+
+            Log::info('Performance soft deleted successfully', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'performance_id' => $id,
+            ]);
+
+            return $this->successResponse(
+                data: null,
+                message: 'Performance soft deleted successfully',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to delete performance', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'performance_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to delete performance', 500, $e->getMessage());
+        }
+    }
+
+    /**
+     * Retrieve the authenticated user's monthly performance.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function me(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Monthly performance failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $currentMonth = Carbon::now()->format('Y-m');
+            $perPage = $request->input('per_page', 20);
+            $cacheKey = "performance_{$user->username}_{$currentMonth}_{$perPage}";
+
+            $monthlyPerformance = Cache::remember($cacheKey, self::CACHE_DURATION, function () use ($user, $currentMonth, $perPage) {
+                return Performance::where('NIP', $user->username)
+                    ->where('stsDel', 0)
+                    ->where('tglKinerja', 'like', "$currentMonth%")
+                    ->orderBy('tglKinerja', 'asc')
+                    ->paginate($perPage);
+            });
+
+            Log::info('Monthly performance retrieved', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'month' => $currentMonth,
+                'per_page' => $perPage,
+            ]);
+
+            return $this->successResponse(
+                data: [
+                    'month' => $currentMonth,
+                    'performances' => PerformanceResource::collection($monthlyPerformance),
+                ],
+                message: 'Monthly performance retrieved successfully',
+                meta: [
+                    'current_page' => $monthlyPerformance->currentPage(),
+                    'per_page' => $monthlyPerformance->perPage(),
+                    'total' => $monthlyPerformance->total(),
+                    'last_page' => $monthlyPerformance->lastPage(),
+                    'from' => $monthlyPerformance->firstItem(),
+                    'to' => $monthlyPerformance->lastItem(),
+                ],
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve monthly performance', [
+                'user_id' => $user->id ?? 'unknown',
+                'username' => $user->username ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to retrieve monthly performance', 500, $e->getMessage());
+        }
+    }
+
+    /**
+     * Filter performances by approval status, month, and year.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function filterByApv(Request $request)
     {
-        $request->validate([
-            'month' => 'required|integer|min:1|max:12', // Month filter (1-12)
-            'year' => 'required|integer|min:2000|max:2100', // Year filter
-            'apvId' => 'nullable|string', // Optional filter for apv status
-            'NIP' => 'nullable|string', // Optional filter for NIP
-        ]);
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Performance filter failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        }
 
-        $month = str_pad($request->month, 2, '0', STR_PAD_LEFT); // Ensure month is two digits
-        $year = $request->year;
-        $apvId = $request->apvId;
+        try {
+            $validator = Validator::make($request->all(), [
+                'month' => 'required|integer|min:1|max:12',
+                'year' => 'required|integer|min:2000|max:2100',
+                'apvId' => 'nullable|string|in:P,A,R',
+                'NIP' => 'nullable|string',
+            ]);
 
-        // Query performances with the specified filters
-        $performances = Performance::where('stsDel', 0) // Exclude soft-deleted records
-            ->whereYear('tglKinerja', $year) // Filter by year
-            ->whereMonth('tglKinerja', $month) // Filter by month
-            ->when($apvId !== null, function ($query) use ($apvId) {
-                $query->where('apv', $apvId); // Filter by apv if provided
-            })
-            ->when($request->has('NIP'), function ($query) use ($request) {
-                $query->where('NIP', $request->NIP); // Filter by NIP if provided
-            })
-            ->get();
+            if ($validator->fails()) {
+                Log::info('Performance filter failed: Validation error', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 422, $validator->errors()->toArray());
+            }
 
-        return response()->json($performances);
+            $month = str_pad($request->month, 2, '0', STR_PAD_LEFT);
+            $year = $request->year;
+            $perPage = $request->input('per_page', 20);
+
+            $performances = Performance::where('stsDel', 0)
+                ->whereYear('tglKinerja', $year)
+                ->whereMonth('tglKinerja', $month)
+                ->when($request->apvId, function ($query) use ($request) {
+                    $query->where('apv', $request->apvId);
+                })
+                ->when($request->NIP, function ($query) use ($request) {
+                    $query->where('NIP', $request->NIP);
+                })
+                ->orderBy('tglKinerja', 'desc')
+                ->paginate($perPage);
+
+            Log::info('Performance filter retrieved', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'month' => $month,
+                'year' => $year,
+                'apvId' => $request->apvId,
+                'NIP' => $request->NIP,
+                'per_page' => $perPage,
+            ]);
+
+            return $this->successResponse(
+                data: PerformanceResource::collection($performances),
+                message: 'Filtered performances retrieved successfully',
+                meta: [
+                    'current_page' => $performances->currentPage(),
+                    'per_page' => $performances->perPage(),
+                    'total' => $performances->total(),
+                    'last_page' => $performances->lastPage(),
+                    'from' => $performances->firstItem(),
+                    'to' => $performances->lastItem(),
+                ],
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to filter performances', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to filter performances', 500, $e->getMessage());
+        }
     }
 }
