@@ -64,7 +64,7 @@ class NewsController extends Controller
     public function latest(Request $request)
     {
         try {
-            $news = News::with('user')->latest()->take(5)->get();
+            $news = News::with('user')->latest()->take(10)->get();
 
             Log::info('Latest news retrieved', [
                 'ip' => $request->ip(),
