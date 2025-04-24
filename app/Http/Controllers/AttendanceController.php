@@ -1,251 +1,542 @@
 <?php
 
 namespace App\Http\Controllers;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+
+use App\Http\Resources\AttendanceResource;
 use App\Models\Attendance;
+use App\Models\DataPegawaiAbsen;
+use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class AttendanceController extends Controller
 {
+    use ApiResponseTrait;
+
+    private const CACHE_DURATION = 300; // 5 menit dalam detik
+
     /**
      * Display the current month's attendance for the authenticated user.
      *
+     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function me()
+    public function me(Request $request)
     {
         $user = auth()->user();
-
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated'], 401);
+            Log::info('Attendance fetch failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
         }
 
-        $currentMonth = Carbon::now()->format('Y-m');
-        $cacheKey = "attendance_{$user->username}_{$currentMonth}";
+        try {
+            $currentMonth = Carbon::now()->format('Y-m');
+            $perPage = $request->input('per_page', 20);
+            $cacheKey = "attendance_{$user->username}_{$currentMonth}_{$perPage}";
 
-        // Retrieve attendance data from cache or query the database if not cached
-        $monthlyAttendance = Cache::remember($cacheKey, 300, function () use ($user, $currentMonth) {
-            return Attendance::where('nip_pegawai', $user->username)
-                ->where('date', 'like', "$currentMonth%")
-                ->orderBy('checktime', 'asc') // Sort by checktime
-                ->get(); // Retrieve all fields allowed in the model's $fillable
-        });
+            $monthlyAttendance = Cache::remember($cacheKey, self::CACHE_DURATION, function () use ($user, $currentMonth, $perPage) {
+                return Attendance::where('nip_pegawai', $user->username)
+                    ->where('date', 'like', "$currentMonth%")
+                    ->orderBy('checktime', 'asc')
+                    ->paginate($perPage);
+            });
 
-        return response()->json([
-            'current_month' => [
+            Log::info('Monthly attendance retrieved', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
                 'month' => $currentMonth,
-                'attendances' => $monthlyAttendance,
-            ],
-        ]);
+                'per_page' => $perPage,
+            ]);
+
+            return $this->successResponse(
+                data: [
+                    'month' => $currentMonth,
+                    'attendances' => AttendanceResource::collection($monthlyAttendance),
+                ],
+                message: 'Monthly attendance retrieved successfully',
+                meta: [
+                    'current_page' => $monthlyAttendance->currentPage(),
+                    'per_page' => $monthlyAttendance->perPage(),
+                    'total' => $monthlyAttendance->total(),
+                    'last_page' => $monthlyAttendance->lastPage(),
+                    'from' => $monthlyAttendance->firstItem(),
+                    'to' => $monthlyAttendance->lastItem(),
+                ],
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve monthly attendance', [
+                'user_id' => $user->id ?? 'unknown',
+                'username' => $user->username ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to retrieve monthly attendance', 500, $e->getMessage());
+        }
     }
 
+    /**
+     * Record an automatic check-in for the authenticated user.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function checkin(Request $request)
     {
         $user = auth()->user();
-
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated'], 401);
+            Log::info('Check-in failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
         }
 
-        // Get user details from the DataPegawaiAbsen model
-        $dataPegawai = $user->dataPegawaiAbsen; // Assuming the relationship is defined in the User model
+        try {
+            $dataPegawai = DataPegawaiAbsen::where('nip', $user->username)->first();
+            if (!$dataPegawai) {
+                Log::info('Check-in failed: User data not found', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                ]);
+                return $this->errorResponse('User data not found in DataPegawaiAbsen', 404);
+            }
 
-        if (!$dataPegawai) {
-            return response()->json(['message' => 'User data not found in DataPegawaiAbsen'], 404);
+            $validator = Validator::make($request->all(), [
+                'coordinate' => 'required|string',
+                'altitude' => 'required|numeric',
+                'checktype' => 'required|string',
+                'jenis_absensi' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                Log::info('Check-in failed: Validation error', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
+
+            $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d');
+            $currentTime = Carbon::now('Asia/Makassar')->format('Y-m-d H:i:s');
+
+            $existingCheckin = Attendance::where('nip_pegawai', $user->username)
+                ->where('date', $currentDate)
+                ->where('checktype', $request->checktype)
+                ->where('jenis_absensi', $request->jenis_absensi)
+                ->exists();
+
+            if ($existingCheckin) {
+                Log::info('Check-in failed: Already checked in', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                    'date' => $currentDate,
+                ]);
+                return $this->errorResponse('You have already checked in today', 400);
+            }
+
+            $idCheckinout = $this->generateIdCheckinout($currentTime);
+
+            $attendance = Attendance::create([
+                'id_checkinout' => $idCheckinout,
+                'nip_pegawai' => $user->username,
+                'id_instansi' => $dataPegawai->id_instansi,
+                'id_unit_kerja' => $dataPegawai->id_unit_kerja,
+                'id_profile' => $dataPegawai->id_pegawai,
+                'date' => $currentDate,
+                'checktime' => $currentTime,
+                'checktype' => $request->checktype,
+                'iplog' => $request->ip(),
+                'coordinate' => $request->coordinate,
+                'altitude' => $request->altitude,
+                'jenis_absensi' => $request->jenis_absensi,
+                'user_platform' => $request->header('User-Agent'),
+                'browser_name' => 'Android App',
+                'browser_version' => $request->header('App-Version', '1.0.0'),
+                'aprv_stats' => 'Y',
+            ]);
+
+            Log::info('Check-in successful', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'attendance_id' => $attendance->id,
+            ]);
+
+            return $this->successResponse(
+                data: new AttendanceResource($attendance),
+                message: 'Check-in successful',
+                meta: null,
+                statusCode: 201
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to process check-in', [
+                'user_id' => $user->id ?? 'unknown',
+                'username' => $user->username ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to process check-in', 500, $e->getMessage());
         }
-
-        $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d'); // GMT+8
-        $currentTime = Carbon::now('Asia/Makassar')->format('Y-m-d H:i:s'); // Full datetime
-
-        // Generate a unique id_checkinout
-        $idCheckinout = $this->generateIdCheckinout($currentTime);
-
-        // Check if the user has already checked in today
-        $existingCheckin = Attendance::where('nip_pegawai', $user->username)
-            ->where('date', $currentDate)
-            ->where('checktype', $request->checktype) 
-            ->where('jenis_absensi', $request->jenis_absensi) // Check for automatic check-in
-            ->exists();
-
-        if ($existingCheckin) {
-            return response()->json(['message' => 'You have already checked in today'], 400);
-        }
-
-        // Validate required fields
-        $request->validate([
-            'coordinate' => 'required|string', // Coordinate is mandatory
-            'altitude' => 'required|numeric', // Altitude is mandatory
-        ]);
-
-        // Create a new attendance record
-        $attendance = Attendance::create([
-            'id_checkinout' => $idCheckinout,
-            'nip_pegawai' => $user->username,
-            'id_instansi' => $dataPegawai->id_instansi,
-            'id_unit_kerja' => $dataPegawai->id_unit_kerja,
-            'id_profile' => $dataPegawai->id_pegawai,
-            'date' => $currentDate,
-            'checktime' => $currentTime, // Full datetime
-            'checktype' => $request->checktype, // Automatic check-in
-            'iplog' => $request->ip(), // Automatically capture IP address
-            'coordinate' => $request->coordinate, // GPS coordinates
-            'altitude' => $request->altitude, // Altitude
-            'jenis_absensi' => $request->jenis_absensi, // Default type
-            'user_platform' => $request->header('User-Agent'), // Capture user agent
-            'browser_name' => 'Android App', // Android app name
-            'browser_version' => $request->header('App-Version', '1.0.0'), // App version (default to 1.0.0)
-            'aprv_stats' => 'Y', // Automatic check-in
-        ]);
-
-        return response()->json(['message' => 'Check-in successful', 'attendance' => $attendance], 201);
     }
 
+    /**
+     * Record a manual check-in for the authenticated user.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function manualCheckin(Request $request)
     {
         $user = auth()->user();
-
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated'], 401);
+            Log::info('Manual check-in failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
         }
 
-        // Get user details from the DataPegawaiAbsen model
-        $dataPegawai = $user->dataPegawaiAbsen; // Assuming the relationship is defined in the User model
+        try {
+            $dataPegawai = DataPegawaiAbsen::where('nip', $user->username)->first();
+            if (!$dataPegawai) {
+                Log::info('Manual check-in failed: User data not found', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                ]);
+                return $this->errorResponse('User data not found in DataPegawaiAbsen', 404);
+            }
 
-        if (!$dataPegawai) {
-            return response()->json(['message' => 'User data not found in DataPegawaiAbsen'], 404);
+            $validator = Validator::make($request->all(), [
+                'date' => 'required|date',
+                'checktime' => 'required|date_format:Y-m-d H:i:s',
+                'coordinate' => 'required|string',
+                'altitude' => 'required|numeric',
+                'checktype' => 'required|string',
+                'jenis_absensi' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                Log::info('Manual check-in failed: Validation error', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
+
+            $existingCheckin = Attendance::where('nip_pegawai', $user->username)
+                ->where('date', $request->date)
+                ->where('checktype', $request->checktype)
+                ->where('jenis_absensi', $request->jenis_absensi)
+                ->exists();
+
+            if ($existingCheckin) {
+                Log::info('Manual check-in failed: Already checked in', [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'ip' => $request->ip(),
+                    'date' => $request->date,
+                ]);
+                return $this->errorResponse('You have already checked in on this date', 400);
+            }
+
+            $idCheckinout = $this->generateIdCheckinout($request->checktime);
+
+            $attendance = Attendance::create([
+                'id_checkinout' => $idCheckinout,
+                'nip_pegawai' => $user->username,
+                'id_instansi' => $dataPegawai->id_instansi,
+                'id_unit_kerja' => $dataPegawai->id_unit_kerja,
+                'id_profile' => $dataPegawai->id_pegawai,
+                'date' => $request->date,
+                'checktime' => $request->checktime,
+                'checktype' => $request->checktype,
+                'iplog' => $request->ip(),
+                'coordinate' => $request->coordinate,
+                'altitude' => $request->altitude,
+                'jenis_absensi' => $request->jenis_absensi,
+                'user_platform' => $request->header('User-Agent'),
+                'browser_name' => 'Android App',
+                'browser_version' => $request->header('App-Version', '1.0.0'),
+                'aprv_stats' => 'N',
+            ]);
+
+            Log::info('Manual check-in successful', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'attendance_id' => $attendance->id,
+            ]);
+
+            return $this->successResponse(
+                data: new AttendanceResource($attendance),
+                message: 'Manual check-in successful',
+                meta: null,
+                statusCode: 201
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to process manual check-in', [
+                'user_id' => $user->id ?? 'unknown',
+                'username' => $user->username ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to process manual check-in', 500, $e->getMessage());
         }
-
-        // Validate required fields
-        $request->validate([
-            'date' => 'required|date',
-            'checktime' => 'required|date_format:Y-m-d H:i:s', // Full datetime
-            'coordinate' => 'required|string', // Coordinate is mandatory
-            'altitude' => 'required|numeric', // Altitude is mandatory
-        ]);
-
-        // Generate a unique id_checkinout
-        $idCheckinout = $this->generateIdCheckinout($request->checktime);
-
-        // Check if the user has already checked in on the specified date
-        $existingCheckin = Attendance::where('nip_pegawai', $user->username)
-            ->where('date', $request->date)
-            ->where('checktype', $request->checktype) 
-            ->where('jenis_absensi', $request->jenis_absensi) // Check for automatic check-in
-         ->exists();
-
-        if ($existingCheckin) {
-            return response()->json(['message' => 'You have already checked in on this date'], 400);
-        }
-
-        // Create a new attendance record
-        $attendance = Attendance::create([
-            'id_checkinout' => $idCheckinout,
-            'nip_pegawai' => $user->username,
-            'id_instansi' => $dataPegawai->id_instansi,
-            'id_unit_kerja' => $dataPegawai->id_unit_kerja,
-            'id_profile' => $dataPegawai->id_pegawai,
-            'date' => $request->date,
-            'checktime' => $request->checktime, // Full datetime
-          'checktype' => $request->checktype, // Automatic check-in
-            'iplog' => $request->ip(), // Automatically capture IP address
-            'coordinate' => $request->coordinate, // GPS coordinates
-            'altitude' => $request->altitude, // Altitude
-            'jenis_absensi' => $request->jenis_absensi, // Default type
-            'user_platform' => $request->header('User-Agent'), // Capture user agent
-            'browser_name' => 'Android App', // Android app name
-            'browser_version' => $request->header('App-Version', '1.0.0'), // App version (default to 1.0.0)
-            'aprv_stats' => 'N', // Manual check-in
-        ]);
-
-        return response()->json(['message' => 'Manual check-in successful', 'attendance' => $attendance], 201);
     }
 
+    /**
+     * Approve or reject a manual attendance record.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function approveOrReject(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:Y,N', // Status must be either 'Y' (approved) or 'N' (rejected)
-        ]);
-
-        $attendance = Attendance::findOrFail($id);
-
-        // Ensure the attendance is a manual check-in
-        if ($attendance->status !== 'N') {
-            return response()->json(['message' => 'Only manual check-ins can be approved or rejected'], 400);
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Approval/Rejection failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
         }
 
-        // Update approval/rejection fields
-        if ($request->status === 'Y') {
-            $attendance->update([
-                'aprv_stats' => 'Y',
-                'aprv_by' => auth()->user()->username, // Admin approving the attendance
-                'aprv_on' => Carbon::now('Asia/Makassar'), // Approval timestamp
+        try {
+            $attendance = Attendance::find($id);
+            if (!$attendance) {
+                Log::info('Approval/Rejection failed: Attendance not found', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'attendance_id' => $id,
+                ]);
+                return $this->errorResponse('Attendance not found', 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:Y,N',
             ]);
 
-            return response()->json(['message' => 'Manual attendance approved successfully']);
-        } else {
-            $attendance->update([
-                'aprv_stats' => 'N',
-                'reject_by' => auth()->user()->username, // Admin rejecting the attendance
-                'reject_on' => Carbon::now('Asia/Makassar'), // Rejection timestamp
+            if ($validator->fails()) {
+                Log::info('Approval/Rejection failed: Validation error', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
+
+            if ($attendance->aprv_stats !== 'N') {
+                Log::info('Approval/Rejection failed: Not a manual check-in', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'attendance_id' => $id,
+                ]);
+                return $this->errorResponse('Only manual check-ins can be approved or rejected', 400);
+            }
+
+            $updateData = [
+                'aprv_stats' => $request->status,
+            ];
+
+            if ($request->status === 'Y') {
+                $updateData['aprv_by'] = $user->username;
+                $updateData['aprv_on'] = Carbon::now('Asia/Makassar');
+            } else {
+                $updateData['reject_by'] = $user->username;
+                $updateData['reject_on'] = Carbon::now('Asia/Makassar');
+            }
+
+            $attendance->update($updateData);
+
+            $message = $request->status === 'Y' ? 'Manual attendance approved successfully' : 'Manual attendance rejected successfully';
+
+            Log::info($message, [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'attendance_id' => $id,
+                'status' => $request->status,
             ]);
 
-            return response()->json(['message' => 'Manual attendance rejected successfully']);
+            return $this->successResponse(
+                data: new AttendanceResource($attendance),
+                message: $message,
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to process approval/rejection', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'attendance_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to process approval/rejection', 500, $e->getMessage());
         }
     }
 
+    /**
+     * List manual attendance records by approval status.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function listManualAttendance(Request $request)
     {
-        $request->validate([
-            'status' => 'required|in:Y,N', // Status must be either 'Y' (approved) or 'N' (rejected)
-        ]);
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Manual attendance list failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        }
 
-        $manualAttendances = Attendance::where('checktype', 'manual') // Only manual check-ins
-            ->where('aprv_stats', $request->status) // Filter by approval status
-            ->orderBy('date', 'desc') // Sort by date
-            ->get();
+        try {
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:Y,N',
+            ]);
 
-        return response()->json($manualAttendances);
+            if ($validator->fails()) {
+                Log::info('Manual attendance list failed: Validation error', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
+
+            $perPage = $request->input('per_page', 20);
+            $manualAttendances = Attendance::where('checktype', 'manual')
+                ->where('aprv_stats', $request->status)
+                ->orderBy('date', 'desc')
+                ->paginate($perPage);
+
+            Log::info('Manual attendance list retrieved', [
+                'user_id' => $user->id,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status' => $request->status,
+                'per_page' => $perPage,
+            ]);
+
+            return $this->successResponse(
+                data: AttendanceResource::collection($manualAttendances),
+                message: 'Manual attendance list retrieved successfully',
+                meta: [
+                    'current_page' => $manualAttendances->currentPage(),
+                    'per_page' => $manualAttendances->perPage(),
+                    'total' => $manualAttendances->total(),
+                    'last_page' => $manualAttendances->lastPage(),
+                    'from' => $manualAttendances->firstItem(),
+                    'to' => $manualAttendances->lastItem(),
+                ],
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve manual attendance list', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to retrieve manual attendance list', 500, $e->getMessage());
+        }
     }
 
+    /**
+     * Upload a photo for attendance.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function uploadPhoto(Request $request)
     {
         $user = auth()->user();
-
         if (!$user) {
-            return response()->json(['message' => 'User not authenticated'], 401);
+            Log::info('Photo upload failed: User not authenticated', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
         }
 
-        $request->validate([
-            'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Validate the uploaded file
-            'checktype' => 'required|in:auto,manual', // Ensure checktype is either 'auto' or 'manual'
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'checktype' => 'required|in:auto,manual',
+            ]);
 
-        $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d'); // GMT+7
-        $timestamp = Carbon::now('Asia/Makassar')->timestamp; // Current timestamp
-        $nip = $user->username; // Get the user's NIP (username)
-        $checkTypeCode = $request->checktype === 'manual' ? 'M' : 'A'; // Use 'M' for manual, 'A' for auto
+            if ($validator->fails()) {
+                Log::info('Photo upload failed: Validation error', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
 
-        // Define the file path
-        $fileExtension = $request->file('photo')->getClientOriginalExtension();
-        $fileName = "{$nip}-{$checkTypeCode}-{$timestamp}.{$fileExtension}";
-        $filePath = "absen/{$currentDate}/{$fileName}";
+            $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d');
+            $timestamp = Carbon::now('Asia/Makassar')->timestamp;
+            $nip = $user->username;
+            $checkTypeCode = $request->checktype === 'manual' ? 'M' : 'A';
 
-        // Store the file in the private disk
-        $request->file('photo')->storeAs("private/absen/{$currentDate}", $fileName);
+            $fileExtension = $request->file('photo')->getClientOriginalExtension();
+            $fileName = "{$nip}-{$checkTypeCode}-{$timestamp}.{$fileExtension}";
+            $filePath = "absen/{$currentDate}/{$fileName}";
 
-        return response()->json([
-            'message' => 'Photo uploaded successfully',
-            'file_path' => $filePath,
-        ]);
+            $request->file('photo')->storeAs("private/absen/{$currentDate}", $fileName);
+
+            Log::info('Photo uploaded successfully', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'file_path' => $filePath,
+            ]);
+
+            return $this->successResponse(
+                data: ['file_path' => $filePath],
+                message: 'Photo uploaded successfully',
+                meta: null,
+                statusCode: 201
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to upload photo', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to upload photo', 500, $e->getMessage());
+        }
     }
 
+    /**
+     * Generate a unique id_checkinout.
+     *
+     * @param string $checktime
+     * @return string
+     */
     private function generateIdCheckinout($checktime)
     {
         $timestamp = strtotime($checktime);
-        $encodedTime = base_convert($timestamp, 10, 36); // Convert timestamp to Base36
-        $randomString = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 6); // Random string
+        $encodedTime = base_convert($timestamp, 10, 36);
+        $randomString = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 6);
         return $randomString . $encodedTime;
     }
 }
