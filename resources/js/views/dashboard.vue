@@ -88,7 +88,7 @@
         <BaseSnackbar
             v-model="showSnackbar"
             color="success"
-            timeout="5000"
+            :timeout="5000"
             location="top right"
             closable
         >
@@ -103,9 +103,9 @@ import { useRouter } from "vue-router";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import BaseButton from "@/components/BaseButton.vue";
 import BaseCard from "@/components/BaseCard.vue";
-import BaseSnackbar from "@/components/BaseSnackbar.vue"; // Impor BaseSnackbar
 import { useAuth } from "@/composables/useAuth";
 import { useUser } from "@/composables/useUser";
+import BaseSnackbar from "@/components/BaseSnackBar.vue";
 import { adminMenuItems, userMenuItems } from "@/config/menu";
 
 export default defineComponent({

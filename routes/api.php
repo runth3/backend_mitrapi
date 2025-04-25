@@ -6,6 +6,8 @@ use App\Http\Controllers\NewsController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\FaceModelController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -14,7 +16,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->name('login');
     Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token');
+    Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token'); // Pindah ke publik
 });
+
 // Public routes
 Route::prefix('news')->group(function () {
     Route::get('latest', [NewsController::class, 'latest'])->name('news.latest');
@@ -27,7 +31,6 @@ Route::middleware('api.auth')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
         Route::post('change-password', [AuthController::class, 'changePassword'])->name('change-password');
-        Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token');
     });
 
     // Profile routes
@@ -53,7 +56,6 @@ Route::middleware('api.auth')->group(function () {
         Route::post('upload-photo', [AttendanceController::class, 'uploadPhoto'])->name('attendances.upload-photo');
     });
 
-    
     // Face Models
     Route::prefix('face-models')->group(function () {
         Route::get('/', [FaceModelController::class, 'index'])->name('face-models.index');
@@ -78,6 +80,21 @@ Route::middleware('api.auth')->group(function () {
 
     // Admin-only routes
     Route::middleware('admin')->group(function () {
+        // User management routes   
+        Route::prefix('users')->group(function () {
+            Route::get('/', [UserController::class, 'index'])->name('users.index');
+            Route::post('/', [UserController::class, 'store'])->name('users.store');
+            Route::get('{id}', [UserController::class, 'show'])->name('users.show');
+            Route::put('{id}', [UserController::class, 'update'])->name('users.update');
+            Route::delete('{id}', [UserController::class, 'destroy'])->name('users.destroy');
+        });
+        Route::prefix('attendances')->group(function () {
+            Route::get('/', [AttendanceController::class, 'index'])->name('attendances.index');
+            Route::get('{id}', [AttendanceController::class, 'show'])->name('attendances.show');
+            Route::put('{id}', [AttendanceController::class, 'update'])->name('attendances.update');
+            Route::delete('{id}', [AttendanceController::class, 'destroy'])->name('attendances.destroy');
+        }); 
+
         Route::prefix('news')->group(function () {
             Route::get('/', [NewsController::class, 'index'])->name('news.index');
             Route::post('/', [NewsController::class, 'store'])->name('news.store');
