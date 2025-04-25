@@ -6,17 +6,20 @@ use App\Http\Controllers\NewsController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\FaceModelController;
 use Illuminate\Support\Facades\Route;
 
 
 
 // Public routes (no authentication)
 Route::prefix('auth')->group(function () {
-    Route::post('login', [AuthController::class, 'login'])->name('auth.login');
-    Route::post('refresh-token', [AuthController::class, 'refresh'])->name('auth.refresh-token');
-    Route::post('validate-token', [AuthController::class, 'validateToken'])->name('auth.validate-token'); // Ubah ke POST
+    Route::post('login', [AuthController::class, 'login'])->name('login');
+    Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token');
+    Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token'); // Pindah ke publik
 });
 
+// Public routes
 Route::prefix('news')->group(function () {
     Route::get('latest', [NewsController::class, 'latest'])->name('news.latest');
     Route::get('{id}', [NewsController::class, 'show'])->name('news.show');
@@ -26,8 +29,8 @@ Route::prefix('news')->group(function () {
 Route::middleware('api.auth')->group(function () {
     // Auth routes
     Route::prefix('auth')->group(function () {
-        Route::post('logout', [AuthController::class, 'logout'])->name('auth.logout');
-        Route::post('change-password', [AuthController::class, 'changePassword'])->name('auth.change-password');
+        Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+        Route::post('change-password', [AuthController::class, 'changePassword'])->name('change-password');
     });
 
     // Profile routes
@@ -53,7 +56,18 @@ Route::middleware('api.auth')->group(function () {
         Route::post('upload-photo', [AttendanceController::class, 'uploadPhoto'])->name('attendances.upload-photo');
     });
 
-    // Performance routes
+    // Face Models
+    Route::prefix('face-models')->group(function () {
+        Route::get('/', [FaceModelController::class, 'index'])->name('face-models.index');
+        Route::post('/', [FaceModelController::class, 'store'])->name('face-models.store');
+        Route::get('active', [FaceModelController::class, 'getActive'])->name('face-models.active');
+        Route::get('{id}', [FaceModelController::class, 'show'])->name('face-models.show');
+        Route::put('{id}/set-active', [FaceModelController::class, 'setActive'])->name('face-models.set-active');
+        Route::delete('{id}', [FaceModelController::class, 'destroy'])->name('face-models.destroy');
+        Route::get('user/{user_id}', [FaceModelController::class, 'getByUserId'])->name('face-models.by-user');
+    });
+
+    // Performance
     Route::prefix('performances')->group(function () {
         Route::get('/', [PerformanceController::class, 'index'])->name('performances.index');
         Route::get('me', [PerformanceController::class, 'me'])->name('performances.me');
@@ -66,6 +80,21 @@ Route::middleware('api.auth')->group(function () {
 
     // Admin-only routes
     Route::middleware('admin')->group(function () {
+        // User management routes   
+        Route::prefix('users')->group(function () {
+            Route::get('/', [UserController::class, 'index'])->name('users.index');
+            Route::post('/', [UserController::class, 'store'])->name('users.store');
+            Route::get('{id}', [UserController::class, 'show'])->name('users.show');
+            Route::put('{id}', [UserController::class, 'update'])->name('users.update');
+            Route::delete('{id}', [UserController::class, 'destroy'])->name('users.destroy');
+        });
+        Route::prefix('attendances')->group(function () {
+            Route::get('/', [AttendanceController::class, 'index'])->name('attendances.index');
+            Route::get('{id}', [AttendanceController::class, 'show'])->name('attendances.show');
+            Route::put('{id}', [AttendanceController::class, 'update'])->name('attendances.update');
+            Route::delete('{id}', [AttendanceController::class, 'destroy'])->name('attendances.destroy');
+        }); 
+
         Route::prefix('news')->group(function () {
             Route::get('/', [NewsController::class, 'index'])->name('news.index');
             Route::post('/', [NewsController::class, 'store'])->name('news.store');

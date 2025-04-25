@@ -3,7 +3,7 @@
         v-model="internalModel"
         :color="color"
         :timeout="timeout"
-        :location="location"
+        :location="location as any"
         :vertical="vertical"
         v-bind="$attrs"
     >
