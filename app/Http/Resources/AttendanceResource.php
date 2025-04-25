@@ -6,6 +6,35 @@ use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @OA\Schema(
+ * schema="AttendanceResource",
+ * type="object",
+ * @OA\Property(property="id", type="integer", example=1),
+ * @OA\Property(property="id_checkinout", type="string", example="ABC123XYZ"),
+ * @OA\Property(property="nip_pegawai", type="string", example="199001012020121001"),
+ * @OA\Property(property="id_instansi", type="integer", example=1),
+ * @OA\Property(property="id_unit_kerja", type="integer", example=10),
+ * @OA\Property(property="id_profile", type="integer", example=100),
+ * @OA\Property(property="date", type="string", format="date", example="2025-04-25"),
+ * @OA\Property(property="checktime", type="string", format="date-time", nullable=true, example="2025-04-25T08:00:00+08:00"),
+ * @OA\Property(property="checktype", type="string", example="IN"),
+ * @OA\Property(property="iplog", type="string", nullable=true, example="192.168.1.1"),
+ * @OA\Property(property="coordinate", type="string", nullable=true, example="-6.175392,106.827153"),
+ * @OA\Property(property="altitude", type="number", format="float", nullable=true, example=10.5),
+ * @OA\Property(property="jenis_absensi", type="string", nullable=true, example="REGULER"),
+ * @OA\Property(property="user_platform", type="string", nullable=true, example="Android"),
+ * @OA\Property(property="browser_name", type="string", nullable=true, example="Android App"),
+ * @OA\Property(property="browser_version", type="string", nullable=true, example="1.0.0"),
+ * @OA\Property(property="aprv_stats", type="string", nullable=true, example="Y"),
+ * @OA\Property(property="aprv_by", type="string", nullable=true, example="admin"),
+ * @OA\Property(property="aprv_on", type="string", format="date-time", nullable=true, example="2025-04-25T08:15:00+08:00"),
+ * @OA\Property(property="reject_by", type="string", nullable=true, example=null),
+ * @OA\Property(property="reject_on", type="string", format="date-time", nullable=true, example=null),
+ * @OA\Property(property="created_at", type="string", format="date-time", nullable=true, example="2025-04-25T07:55:00+08:00"),
+ * @OA\Property(property="updated_at", type="string", format="date-time", nullable=true, example="2025-04-25T08:00:00+08:00")
+ * )
+ */
 class AttendanceResource extends JsonResource
 {
     /**
