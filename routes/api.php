@@ -8,6 +8,8 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PerformanceController;
 use Illuminate\Support\Facades\Route;
 
+
+
 // Public routes (no authentication)
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->name('auth.login');

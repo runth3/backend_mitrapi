@@ -17,6 +17,6 @@
             API_BASE_URL: '{{ env('API_BASE_URL', '/api') }}'
         };
     </script>
-    @vite(['resources/js/app.js'])
+    @vite(['resources/js/main.ts'])
 </body>
 </html>

@@ -12,19 +12,72 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-
+/**
+ * @OA\Tag(
+ * name="Attendances",
+ * description="Operations related to user attendance"
+ * )
+ */
 class AttendanceController extends Controller
 {
     use ApiResponseTrait;
 
     private const CACHE_DURATION = 300; // 5 menit dalam detik
-
     /**
-     * Display the current month's attendance for the authenticated user.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
+    * @OA\Get(
+    * path="/api/attendances/me",
+    * summary="Get current month's attendance for authenticated user",
+    * description="Retrieves the attendance records for the current month for the authenticated user. Requires authentication.",
+    * tags={"Attendances"},
+    * security={{"bearerAuth":{}}},
+    * @OA\Parameter(
+    * name="per_page",
+    * in="query",
+    * description="Number of items per page",
+    * @OA\Schema(type="integer", default=20)
+    * ),
+    * @OA\Response(
+    * response=200,
+    * description="Successful operation",
+    * @OA\JsonContent(
+    * type="object",
+    * @OA\Property(property="status", type="string", example="success"),
+    * @OA\Property(property="data", type="object",
+    * @OA\Property(property="month", type="string", example="2025-04"),
+    * @OA\Property(property="attendances", type="array", @OA\Items(ref="#/components/schemas/AttendanceResource"))
+    * ),
+    * @OA\Property(property="message", type="string", example="Monthly attendance retrieved successfully"),
+    * @OA\Property(property="meta", type="object",
+    * @OA\Property(property="current_page", type="integer", example=1),
+    * @OA\Property(property="per_page", type="integer", example=20),
+    * @OA\Property(property="total", type="integer", example=100),
+    * @OA\Property(property="last_page", type="integer", example=5),
+    * @OA\Property(property="from", type="integer", example=1),
+    * @OA\Property(property="to", type="integer", example=20)
+    * )
+    * )
+    * ),
+    * @OA\Response(
+    * response=401,
+    * description="User not authenticated",
+    * @OA\JsonContent(
+    * type="object",
+    * @OA\Property(property="status", type="string", example="error"),
+    * @OA\Property(property="message", type="string", example="User not authenticated")
+    * )
+    * ),
+    * @OA\Response(
+    * response=500,
+    * description="Failed to retrieve monthly attendance",
+    * @OA\JsonContent(
+    * type="object",
+    * @OA\Property(property="status", type="string", example="error"),
+    * @OA\Property(property="message", type="string", example="Failed to retrieve monthly attendance"),
+    * @OA\Property(property="details", type="string", example="Error message")
+    * )
+    * )
+    * )
+    */
     public function me(Request $request)
     {
         $user = auth()->user();
@@ -85,11 +138,73 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Record an automatic check-in for the authenticated user.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @OA\Post(
+     * path="/api/attendances/check-in",
+     * summary="Record an automatic check-in",
+     * description="Records an automatic check-in for the authenticated user. Requires authentication.",
+     * tags={"Attendances"},
+     * security={{"bearerAuth":{}}},
+     * @OA\RequestBody(
+     * required=true,
+     * @OA\JsonContent(
+     * required={"coordinate", "altitude", "checktype", "jenis_absensi"},
+     * @OA\Property(property="coordinate", type="string", example="-6.175392,106.827153"),
+     * @OA\Property(property="altitude", type="number", format="float", example=10.5),
+     * @OA\Property(property="checktype", type="string", example="IN", enum={"IN", "OUT"}),
+     * @OA\Property(property="jenis_absensi", type="string", example="REGULER", enum={"REGULER", "MANUAL"})
+     * )
+     * ),
+     * @OA\Response(
+     * response=201,
+     * description="Check-in successful",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="success"),
+     * @OA\Property(property="data", ref="#/components/schemas/AttendanceResource"),
+     * @OA\Property(property="message", type="string", example="Check-in successful")
+     * )
+     * ),
+     * @OA\Response(
+     * response=400,
+     * description="Invalid input or already checked in",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Invalid input"),
+     * @OA\Property(property="details", type="object", @OA\Property(property="coordinate", type="array", @OA\Items(type="string")))
+     * )
+     * ),
+     * @OA\Response(
+     * response=401,
+     * description="User not authenticated",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="User not authenticated")
+     * )
+     * ),
+     * @OA\Response(
+     * response=404,
+     * description="User data not found",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="User data not found in DataPegawaiAbsen")
+     * )
+     * ),
+     * @OA\Response(
+     * response=500,
+     * description="Failed to process check-in",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Failed to process check-in"),
+     * @OA\Property(property="details", type="string", example="Error message")
+     * )
+     * )
+     * )
      */
+
     public function checkin(Request $request)
     {
         $user = auth()->user();
@@ -194,10 +309,73 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Record a manual check-in for the authenticated user.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @OA\Post(
+     * path="/api/attendances/manual-check-in",
+     * summary="Record a manual check-in",
+     * description="Records a manual check-in for the authenticated user. Requires authentication.",
+     * tags={"Attendances"},
+     * security={{"bearerAuth":{}}},
+     * @OA\RequestBody(
+     * required=true,
+     * @OA\JsonContent(
+     * required={"date", "checktime", "coordinate", "altitude", "checktype", "jenis_absensi"},
+     * @OA\Property(property="date", type="string", format="date", example="2025-04-25"),
+     * @OA\Property(property="checktime", type="string", format="date-time", example="2025-04-25 09:00:00"),
+     * @OA\Property(property="coordinate", type="string", example="-6.175392,106.827153"),
+     * @OA\Property(property="altitude", type="number", format="float", example=10.5),
+     * @OA\Property(property="checktype", type="string", example="IN", enum={"IN", "OUT"}),
+     * @OA\Property(property="jenis_absensi", type="string", example="MANUAL", enum={"REGULER", "MANUAL"})
+     * )
+     * ),
+     * @OA\Response(
+     * response=201,
+     * description="Manual check-in successful",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="success"),
+     * @OA\Property(property="data", ref="#/components/schemas/AttendanceResource"),
+     * @OA\Property(property="message", type="string", example="Manual check-in successful")
+     * )
+     * ),
+     * @OA\Response(
+     * response=400,
+     * description="Invalid input or already checked in",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Invalid input"),
+     * @OA\Property(property="details", type="object", @OA\Property(property="date", type="array", @OA\Items(type="string")))
+     * )
+     * ),
+     * @OA\Response(
+     * response=401,
+     * description="User not authenticated",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="User not authenticated")
+     * )
+     * ),
+     * @OA\Response(
+     * response=404,
+     * description="User data not found",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="User data not found in DataPegawaiAbsen")
+     * )
+     * ),
+     * @OA\Response(
+     * response=500,
+     * description="Failed to process manual check-in",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Failed to process manual check-in"),
+     * @OA\Property(property="details", type="string", example="Error message")
+     * )
+     * )
+     * )
      */
     public function manualCheckin(Request $request)
     {
@@ -302,11 +480,75 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Approve or reject a manual attendance record.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * @OA\Post(
+     * path="/api/attendances/{id}/approve-or-reject",
+     * summary="Approve or reject a manual attendance record",
+     * description="Approves or rejects a manual attendance record by its ID. Requires authentication.",
+     * tags={"Attendances"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(
+     * name="id",
+     * in="path",
+     * required=true,
+     * description="ID of the attendance record",
+     * @OA\Schema(type="integer", format="int64")
+     * ),
+     * @OA\RequestBody(
+     * required=true,
+     * @OA\JsonContent(
+     * required={"status"},
+     * @OA\Property(property="status", type="string", example="Y", enum={"Y", "N"})
+     * )
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="Approval/rejection successful",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="success"),
+     * @OA\Property(property="data", ref="#/components/schemas/AttendanceResource"),
+     * @OA\Property(property="message", type="string", example="Manual attendance approved successfully")
+     * )
+     * ),
+     * @OA\Response(
+     * response=400,
+     * description="Invalid input or not a manual check-in",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Invalid input"),
+     * @OA\Property(property="details", type="object", @OA\Property(property="status", type="array", @OA\Items(type="string")))
+     * )
+     * ),
+     * @OA\Response(
+     * response=401,
+     * description="User not authenticated",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="User not authenticated")
+     * )
+     * ),
+     * @OA\Response(
+     * response=404,
+     * description="Attendance not found",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Attendance not found")
+     * )
+     * ),
+     * @OA\Response(
+     * response=500,
+     * description="Failed to process approval/rejection",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Failed to process approval/rejection"),
+     * @OA\Property(property="details", type="string", example="Error message")
+     * )
+     * )
+     * )
      */
     public function approveOrReject(Request $request, $id)
     {
@@ -392,11 +634,74 @@ class AttendanceController extends Controller
         }
     }
 
-    /**
-     * List manual attendance records by approval status.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
+     /**
+     * @OA\Get(
+     * path="/api/attendances/manual",
+     * summary="List manual attendance records by approval status",
+     * description="Retrieves a list of manual attendance records filtered by their approval status. Requires authentication.",
+     * tags={"Attendances"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(
+     * name="status",
+     * in="query",
+     * required=true,
+       * description="Approval status to filter by (Y for approved, N for not approved)",
+     * @OA\Schema(type="string", enum={"Y", "N"})
+     * ),
+     * @OA\Parameter(
+     * name="per_page",
+     * in="query",
+     * description="Number of items per page",
+     * @OA\Schema(type="integer", default=20)
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="Successful operation",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="success"),
+     * @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/AttendanceResource")),
+     * @OA\Property(property="message", type="string", example="Manual attendance list retrieved successfully"),
+     * @OA\Property(property="meta", type="object",
+     * @OA\Property(property="current_page", type="integer", example=1),
+     * @OA\Property(property="per_page", type="integer", example=20),
+     * @OA\Property(property="total", type="integer", example=50),
+     * @OA\Property(property="last_page", type="integer", example=3),
+     * @OA\Property(property="from", type="integer", example=1),
+     * @OA\Property(property="to", type="integer", example=20)
+     * )
+     * )
+     * ),
+     * @OA\Response(
+     * response=400,
+     * description="Invalid input",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Invalid input"),
+     * @OA\Property(property="details", type="object", @OA\Property(property="status", type="array", @OA\Items(type="string")))
+     * )
+     * ),
+     * @OA\Response(
+     * response=401,
+     * description="User not authenticated",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="User not authenticated")
+     * )
+     * ),
+     * @OA\Response(
+     * response=500,
+     * description="Failed to retrieve manual attendance list",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Failed to retrieve manual attendance list"),
+     * @OA\Property(property="details", type="string", example="Error message")
+     * )
+     * )
+     * )
      */
     public function listManualAttendance(Request $request)
     {
@@ -460,11 +765,64 @@ class AttendanceController extends Controller
         }
     }
 
-    /**
-     * Upload a photo for attendance.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
+   /**
+     * @OA\Post(
+     * path="/api/attendances/upload-photo",
+     * summary="Upload a photo for attendance",
+     * description="Uploads a photo related to an attendance record. Requires authentication.",
+     * tags={"Attendances"},
+     * security={{"bearerAuth":{}}},
+     * @OA\RequestBody(
+     * required=true,
+     * @OA\MediaType(
+     * mediaType="multipart/form-data",
+     * @OA\Schema(
+     * required={"photo", "checktype"},
+     * @OA\Property(property="photo", type="file", description="Image file to upload"),
+     * @OA\Property(property="checktype", type="string", example="auto", enum={"auto", "manual"})
+     * )
+     * )
+     * ),
+     * @OA\Response(
+     * response=201,
+     * description="Photo uploaded successfully",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="success"),
+     * @OA\Property(property="data", type="object", @OA\Property(property="file_path", type="string", example="absen/2025-04-25/12345-A-1650888000.jpg")),
+     * @OA\Property(property="message", type="string", example="Photo uploaded successfully")
+     * )
+     * ),
+     * @OA\Response(
+     * response=400,
+     * description="Invalid input",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Invalid input"),
+     * @OA\Property(property="details", type="object", @OA\Property(property="photo", type="array", @OA\Items(type="string")))
+     * )
+     * ),
+     * @OA\Response(
+     * response=401,
+     * description="User not authenticated",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="User not authenticated")
+     * )
+     * ),
+     * @OA\Response(
+     * response=500,
+     * description="Failed to upload photo",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="status", type="string", example="error"),
+     * @OA\Property(property="message", type="string", example="Failed to upload photo"),
+     * @OA\Property(property="details", type="string", example="Error message")
+     * )
+     * )
+     * )
      */
     public function uploadPhoto(Request $request)
     {
