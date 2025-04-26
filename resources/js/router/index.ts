@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 
 // Lazy load components
 const Login = () => import("@/views/login.vue");
-const Dashboard = () => import("@/views/Dashboard.vue");
+const Dashboard = () => import("@/views/dashboard.vue");
 const FaceModelListView = () => import("@/views/FaceModelListView.vue");
 const CreateNews = () => import("@/views/create-news.vue");
 const NewsDetail = () => import("@/views/news-detail.vue");
