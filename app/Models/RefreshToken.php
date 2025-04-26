@@ -3,16 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class RefreshToken extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['user_id', 'token', 'expires_at'];
-
-    protected $casts = [
-        'expires_at' => 'datetime',
+    protected $fillable = [
+        'user_id',
+        'device_id',
+        'token',
+        'expires_at',
     ];
 
     public function user()
