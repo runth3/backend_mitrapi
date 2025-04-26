@@ -10,74 +10,14 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-/**
- * @OA\Tag(
- * name="Attendances",
- * description="Operations related to user attendance"
- * )
- */
+
 class AttendanceController extends Controller
 {
     use ApiResponseTrait;
 
     private const CACHE_DURATION = 300; // 5 menit dalam detik
-    /**
-    * @OA\Get(
-    * path="/api/attendances/me",
-    * summary="Get current month's attendance for authenticated user",
-    * description="Retrieves the attendance records for the current month for the authenticated user. Requires authentication.",
-    * tags={"Attendances"},
-    * security={{"bearerAuth":{}}},
-    * @OA\Parameter(
-    * name="per_page",
-    * in="query",
-    * description="Number of items per page",
-    * @OA\Schema(type="integer", default=20)
-    * ),
-    * @OA\Response(
-    * response=200,
-    * description="Successful operation",
-    * @OA\JsonContent(
-    * type="object",
-    * @OA\Property(property="status", type="string", example="success"),
-    * @OA\Property(property="data", type="object",
-    * @OA\Property(property="month", type="string", example="2025-04"),
-    * @OA\Property(property="attendances", type="array", @OA\Items(ref="#/components/schemas/AttendanceResource"))
-    * ),
-    * @OA\Property(property="message", type="string", example="Monthly attendance retrieved successfully"),
-    * @OA\Property(property="meta", type="object",
-    * @OA\Property(property="current_page", type="integer", example=1),
-    * @OA\Property(property="per_page", type="integer", example=20),
-    * @OA\Property(property="total", type="integer", example=100),
-    * @OA\Property(property="last_page", type="integer", example=5),
-    * @OA\Property(property="from", type="integer", example=1),
-    * @OA\Property(property="to", type="integer", example=20)
-    * )
-    * )
-    * ),
-    * @OA\Response(
-    * response=401,
-    * description="User not authenticated",
-    * @OA\JsonContent(
-    * type="object",
-    * @OA\Property(property="status", type="string", example="error"),
-    * @OA\Property(property="message", type="string", example="User not authenticated")
-    * )
-    * ),
-    * @OA\Response(
-    * response=500,
-    * description="Failed to retrieve monthly attendance",
-    * @OA\JsonContent(
-    * type="object",
-    * @OA\Property(property="status", type="string", example="error"),
-    * @OA\Property(property="message", type="string", example="Failed to retrieve monthly attendance"),
-    * @OA\Property(property="details", type="string", example="Error message")
-    * )
-    * )
-    * )
-    */
+
     public function me(Request $request)
     {
         $user = auth()->user();
@@ -136,74 +76,6 @@ class AttendanceController extends Controller
             return $this->errorResponse('Failed to retrieve monthly attendance', 500, $e->getMessage());
         }
     }
-
-    /**
-     * @OA\Post(
-     * path="/api/attendances/check-in",
-     * summary="Record an automatic check-in",
-     * description="Records an automatic check-in for the authenticated user. Requires authentication.",
-     * tags={"Attendances"},
-     * security={{"bearerAuth":{}}},
-     * @OA\RequestBody(
-     * required=true,
-     * @OA\JsonContent(
-     * required={"coordinate", "altitude", "checktype", "jenis_absensi"},
-     * @OA\Property(property="coordinate", type="string", example="-6.175392,106.827153"),
-     * @OA\Property(property="altitude", type="number", format="float", example=10.5),
-     * @OA\Property(property="checktype", type="string", example="IN", enum={"IN", "OUT"}),
-     * @OA\Property(property="jenis_absensi", type="string", example="REGULER", enum={"REGULER", "MANUAL"})
-     * )
-     * ),
-     * @OA\Response(
-     * response=201,
-     * description="Check-in successful",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="success"),
-     * @OA\Property(property="data", ref="#/components/schemas/AttendanceResource"),
-     * @OA\Property(property="message", type="string", example="Check-in successful")
-     * )
-     * ),
-     * @OA\Response(
-     * response=400,
-     * description="Invalid input or already checked in",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Invalid input"),
-     * @OA\Property(property="details", type="object", @OA\Property(property="coordinate", type="array", @OA\Items(type="string")))
-     * )
-     * ),
-     * @OA\Response(
-     * response=401,
-     * description="User not authenticated",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="User not authenticated")
-     * )
-     * ),
-     * @OA\Response(
-     * response=404,
-     * description="User data not found",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="User data not found in DataPegawaiAbsen")
-     * )
-     * ),
-     * @OA\Response(
-     * response=500,
-     * description="Failed to process check-in",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Failed to process check-in"),
-     * @OA\Property(property="details", type="string", example="Error message")
-     * )
-     * )
-     * )
-     */
 
     public function checkin(Request $request)
     {
@@ -308,75 +180,6 @@ class AttendanceController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     * path="/api/attendances/manual-check-in",
-     * summary="Record a manual check-in",
-     * description="Records a manual check-in for the authenticated user. Requires authentication.",
-     * tags={"Attendances"},
-     * security={{"bearerAuth":{}}},
-     * @OA\RequestBody(
-     * required=true,
-     * @OA\JsonContent(
-     * required={"date", "checktime", "coordinate", "altitude", "checktype", "jenis_absensi"},
-     * @OA\Property(property="date", type="string", format="date", example="2025-04-25"),
-     * @OA\Property(property="checktime", type="string", format="date-time", example="2025-04-25 09:00:00"),
-     * @OA\Property(property="coordinate", type="string", example="-6.175392,106.827153"),
-     * @OA\Property(property="altitude", type="number", format="float", example=10.5),
-     * @OA\Property(property="checktype", type="string", example="IN", enum={"IN", "OUT"}),
-     * @OA\Property(property="jenis_absensi", type="string", example="MANUAL", enum={"REGULER", "MANUAL"})
-     * )
-     * ),
-     * @OA\Response(
-     * response=201,
-     * description="Manual check-in successful",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="success"),
-     * @OA\Property(property="data", ref="#/components/schemas/AttendanceResource"),
-     * @OA\Property(property="message", type="string", example="Manual check-in successful")
-     * )
-     * ),
-     * @OA\Response(
-     * response=400,
-     * description="Invalid input or already checked in",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Invalid input"),
-     * @OA\Property(property="details", type="object", @OA\Property(property="date", type="array", @OA\Items(type="string")))
-     * )
-     * ),
-     * @OA\Response(
-     * response=401,
-     * description="User not authenticated",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="User not authenticated")
-     * )
-     * ),
-     * @OA\Response(
-     * response=404,
-     * description="User data not found",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="User data not found in DataPegawaiAbsen")
-     * )
-     * ),
-     * @OA\Response(
-     * response=500,
-     * description="Failed to process manual check-in",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Failed to process manual check-in"),
-     * @OA\Property(property="details", type="string", example="Error message")
-     * )
-     * )
-     * )
-     */
     public function manualCheckin(Request $request)
     {
         $user = auth()->user();
@@ -479,77 +282,6 @@ class AttendanceController extends Controller
         }
     }
 
-    /**
-     * @OA\Post(
-     * path="/api/attendances/{id}/approve-or-reject",
-     * summary="Approve or reject a manual attendance record",
-     * description="Approves or rejects a manual attendance record by its ID. Requires authentication.",
-     * tags={"Attendances"},
-     * security={{"bearerAuth":{}}},
-     * @OA\Parameter(
-     * name="id",
-     * in="path",
-     * required=true,
-     * description="ID of the attendance record",
-     * @OA\Schema(type="integer", format="int64")
-     * ),
-     * @OA\RequestBody(
-     * required=true,
-     * @OA\JsonContent(
-     * required={"status"},
-     * @OA\Property(property="status", type="string", example="Y", enum={"Y", "N"})
-     * )
-     * ),
-     * @OA\Response(
-     * response=200,
-     * description="Approval/rejection successful",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="success"),
-     * @OA\Property(property="data", ref="#/components/schemas/AttendanceResource"),
-     * @OA\Property(property="message", type="string", example="Manual attendance approved successfully")
-     * )
-     * ),
-     * @OA\Response(
-     * response=400,
-     * description="Invalid input or not a manual check-in",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Invalid input"),
-     * @OA\Property(property="details", type="object", @OA\Property(property="status", type="array", @OA\Items(type="string")))
-     * )
-     * ),
-     * @OA\Response(
-     * response=401,
-     * description="User not authenticated",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="User not authenticated")
-     * )
-     * ),
-     * @OA\Response(
-     * response=404,
-     * description="Attendance not found",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Attendance not found")
-     * )
-     * ),
-     * @OA\Response(
-     * response=500,
-     * description="Failed to process approval/rejection",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Failed to process approval/rejection"),
-     * @OA\Property(property="details", type="string", example="Error message")
-     * )
-     * )
-     * )
-     */
     public function approveOrReject(Request $request, $id)
     {
         $user = auth()->user();
@@ -634,75 +366,6 @@ class AttendanceController extends Controller
         }
     }
 
-     /**
-     * @OA\Get(
-     * path="/api/attendances/manual",
-     * summary="List manual attendance records by approval status",
-     * description="Retrieves a list of manual attendance records filtered by their approval status. Requires authentication.",
-     * tags={"Attendances"},
-     * security={{"bearerAuth":{}}},
-     * @OA\Parameter(
-     * name="status",
-     * in="query",
-     * required=true,
-       * description="Approval status to filter by (Y for approved, N for not approved)",
-     * @OA\Schema(type="string", enum={"Y", "N"})
-     * ),
-     * @OA\Parameter(
-     * name="per_page",
-     * in="query",
-     * description="Number of items per page",
-     * @OA\Schema(type="integer", default=20)
-     * ),
-     * @OA\Response(
-     * response=200,
-     * description="Successful operation",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="success"),
-     * @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/AttendanceResource")),
-     * @OA\Property(property="message", type="string", example="Manual attendance list retrieved successfully"),
-     * @OA\Property(property="meta", type="object",
-     * @OA\Property(property="current_page", type="integer", example=1),
-     * @OA\Property(property="per_page", type="integer", example=20),
-     * @OA\Property(property="total", type="integer", example=50),
-     * @OA\Property(property="last_page", type="integer", example=3),
-     * @OA\Property(property="from", type="integer", example=1),
-     * @OA\Property(property="to", type="integer", example=20)
-     * )
-     * )
-     * ),
-     * @OA\Response(
-     * response=400,
-     * description="Invalid input",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Invalid input"),
-     * @OA\Property(property="details", type="object", @OA\Property(property="status", type="array", @OA\Items(type="string")))
-     * )
-     * ),
-     * @OA\Response(
-     * response=401,
-     * description="User not authenticated",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="User not authenticated")
-     * )
-     * ),
-     * @OA\Response(
-     * response=500,
-     * description="Failed to retrieve manual attendance list",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Failed to retrieve manual attendance list"),
-     * @OA\Property(property="details", type="string", example="Error message")
-     * )
-     * )
-     * )
-     */
     public function listManualAttendance(Request $request)
     {
         $user = auth()->user();
@@ -739,150 +402,79 @@ class AttendanceController extends Controller
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'status' => $request->status,
-                'per_page' => $perPage,
-            ]);
+                $perPage,
+],
+statusCode: 200
+);
+} catch (\Exception $e) {
+Log::error('Failed to retrieve manual attendance list', [
+'user_id' => $user->id ?? 'unknown',
+'ip' => $request->ip(),
+'error' => $e->getMessage(),
+]);
+return $this->errorResponse('Failed to retrieve manual attendance list', 500, $e->getMessage());
+}
+}
 
-            return $this->successResponse(
-                data: AttendanceResource::collection($manualAttendances),
-                message: 'Manual attendance list retrieved successfully',
-                meta: [
-                    'current_page' => $manualAttendances->currentPage(),
-                    'per_page' => $manualAttendances->perPage(),
-                    'total' => $manualAttendances->total(),
-                    'last_page' => $manualAttendances->lastPage(),
-                    'from' => $manualAttendances->firstItem(),
-                    'to' => $manualAttendances->lastItem(),
-                ],
-                statusCode: 200
-            );
-        } catch (\Exception $e) {
-            Log::error('Failed to retrieve manual attendance list', [
-                'user_id' => $user->id ?? 'unknown',
-                'ip' => $request->ip(),
-                'error' => $e->getMessage(),
-            ]);
-            return $this->errorResponse('Failed to retrieve manual attendance list', 500, $e->getMessage());
-        }
+public function uploadPhoto(Request $request)
+{
+    $user = auth()->user();
+    if (!$user) {
+        Log::info('Photo upload failed: User not authenticated', [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+        return $this->errorResponse('User not authenticated', 401);
     }
 
-   /**
-     * @OA\Post(
-     * path="/api/attendances/upload-photo",
-     * summary="Upload a photo for attendance",
-     * description="Uploads a photo related to an attendance record. Requires authentication.",
-     * tags={"Attendances"},
-     * security={{"bearerAuth":{}}},
-     * @OA\RequestBody(
-     * required=true,
-     * @OA\MediaType(
-     * mediaType="multipart/form-data",
-     * @OA\Schema(
-     * required={"photo", "checktype"},
-     * @OA\Property(property="photo", type="file", description="Image file to upload"),
-     * @OA\Property(property="checktype", type="string", example="auto", enum={"auto", "manual"})
-     * )
-     * )
-     * ),
-     * @OA\Response(
-     * response=201,
-     * description="Photo uploaded successfully",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="success"),
-     * @OA\Property(property="data", type="object", @OA\Property(property="file_path", type="string", example="absen/2025-04-25/12345-A-1650888000.jpg")),
-     * @OA\Property(property="message", type="string", example="Photo uploaded successfully")
-     * )
-     * ),
-     * @OA\Response(
-     * response=400,
-     * description="Invalid input",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Invalid input"),
-     * @OA\Property(property="details", type="object", @OA\Property(property="photo", type="array", @OA\Items(type="string")))
-     * )
-     * ),
-     * @OA\Response(
-     * response=401,
-     * description="User not authenticated",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="User not authenticated")
-     * )
-     * ),
-     * @OA\Response(
-     * response=500,
-     * description="Failed to upload photo",
-     * @OA\JsonContent(
-     * type="object",
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Failed to upload photo"),
-     * @OA\Property(property="details", type="string", example="Error message")
-     * )
-     * )
-     * )
-     */
-    public function uploadPhoto(Request $request)
-    {
-        $user = auth()->user();
-        if (!$user) {
-            Log::info('Photo upload failed: User not authenticated', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
-            return $this->errorResponse('User not authenticated', 401);
-        }
+    try {
+        $validator = Validator::make($request->all(), [
+            'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'checktype' => 'required|in:auto,manual',
+        ]);
 
-        try {
-            $validator = Validator::make($request->all(), [
-                'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-                'checktype' => 'required|in:auto,manual',
-            ]);
-
-            if ($validator->fails()) {
-                Log::info('Photo upload failed: Validation error', [
-                    'user_id' => $user->id,
-                    'ip' => $request->ip(),
-                    'errors' => $validator->errors()->toArray(),
-                ]);
-                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
-            }
-
-            $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d');
-            $timestamp = Carbon::now('Asia/Makassar')->timestamp;
-            $nip = $user->username;
-            $checkTypeCode = $request->checktype === 'manual' ? 'M' : 'A';
-
-            $fileExtension = $request->file('photo')->getClientOriginalExtension();
-            $fileName = "{$nip}-{$checkTypeCode}-{$timestamp}.{$fileExtension}";
-            $filePath = "absen/{$currentDate}/{$fileName}";
-
-            $request->file('photo')->storeAs("private/absen/{$currentDate}", $fileName);
-
-            Log::info('Photo uploaded successfully', [
+        if ($validator->fails()) {
+            Log::info('Photo upload failed: Validation error', [
                 'user_id' => $user->id,
-                'username' => $user->username,
                 'ip' => $request->ip(),
-                'file_path' => $filePath,
+                'errors' => $validator->errors()->toArray(),
             ]);
-
-            return $this->successResponse(
-                data: ['file_path' => $filePath],
-                message: 'Photo uploaded successfully',
-                meta: null,
-                statusCode: 201
-            );
-        } catch (\Exception $e) {
-            Log::error('Failed to upload photo', [
-                'user_id' => $user->id ?? 'unknown',
-                'ip' => $request->ip(),
-                'error' => $e->getMessage(),
-            ]);
-            return $this->errorResponse('Failed to upload photo', 500, $e->getMessage());
+            return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
         }
+
+        $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d');
+        $timestamp = Carbon::now('Asia/Makassar')->timestamp;
+        $nip = $user->username;
+        $checkTypeCode = $request->checktype === 'manual' ? 'M' : 'A';
+
+        $fileExtension = $request->file('photo')->getClientOriginalExtension();
+        $fileName = "{$nip}-{$checkTypeCode}-{$timestamp}.{$fileExtension}";
+        $filePath = "absen/{$currentDate}/{$fileName}";
+
+        $request->file('photo')->storeAs("private/absen/{$currentDate}", $fileName);
+
+        Log::info('Photo uploaded successfully', [
+            'user_id' => $user->id,
+            'username' => $user->username,
+            'ip' => $request->ip(),
+            'file_path' => $filePath,
+        ]);
+
+        return $this->successResponse(
+            data: ['file_path' => $filePath],
+            message: 'Photo uploaded successfully',
+            meta: null,
+            statusCode: 201
+        );
+    } catch (\Exception $e) {
+        Log::error('Failed to upload photo', [
+            'user_id' => $user->id ?? 'unknown',
+            'ip' => $request->ip(),
+            'error' => $e->getMessage(),
+        ]);
+        return $this->errorResponse('Failed to upload photo', 500, $e->getMessage());
     }
+}
 
     /**
      * Generate a unique id_checkinout.
