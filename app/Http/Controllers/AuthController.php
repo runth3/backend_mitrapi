@@ -14,41 +14,14 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
 
-/**
- * @OA\Tag(
- *     name="Auth",
- *     description="Operations related to user authentication"
- * )
- */
 class AuthController extends Controller
 {
     use ApiResponseTrait;
 
     /**
-     * @OA\Post(
-     *     path="/api/auth/login",
-     *     summary="Authenticate user and get token",
-     *     description="Authenticates a user using username and password and returns an access token and refresh token. Requires the X-Device-ID header.",
-     *     tags={"Auth"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="User credentials",
-     *         @OA\JsonContent(
-     *             required={"username", "password"},
-     *             @OA\Property(property="username", type="string", example="johndoe"),
-     *             @OA\Property(property="password", type="string", format="password", example="secret")
-     *         )
-     *     ),
-     *     @OA\Header(
-     *         header="X-Device-ID",
-     *         required=true,
-     *         description="Unique identifier of the device making the request (minimum 8 alphanumeric characters, underscores, or hyphens)"
-     *     ),
-     *     @OA\Response(response=200, description="Successful authentication", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="success"), @OA\Property(property="data", type="object", @OA\Property(property="access_token", type="string", example="eyJ..."), @OA\Property(property="token_type", type="string", example="Bearer"), @OA\Property(property="refresh_token", type="string", example="eyJ..."), @OA\Property(property="user", type="object", @OA\Property(property="id", type="integer", example=1), @OA\Property(property="username", type="string", example="johndoe"), @OA\Property(property="email", type="string", example="johndoe@example.com")), @OA\Property(property="expires_at", type="string", format="date-time", example="2025-05-02T10:00:00+00:00")), @OA\Property(property="error", type="null"), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Login successful"))),
-     *     @OA\Response(response=400, description="Invalid input or missing Device ID", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="error"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="object", @OA\Property(property="code", type="integer", example=400), @OA\Property(property="message", type="string", example="Invalid input. Please check your username and password."), @OA\Property(property="details", type="object", @OA\Property(property="username", type="array", @OA\Items(type="string")), @OA\Property(property="password", type="array", @OA\Items(type="string")), @OA\Property(property="device_id", type="array", @OA\Items(type="string")))), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Invalid input. Please check your username and password."))),
-     *     @OA\Response(response=401, description="Invalid login credentials", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="error"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="object", @OA\Property(property="code", type="integer", example=401), @OA\Property(property="message", type="string", example="Invalid login credentials."), @OA\Property(property="details", type="null")), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Invalid login credentials."))),
-     *     @OA\Response(response=429, description="Too many login attempts", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="error"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="object", @OA\Property(property="code", type="integer", example=429), @OA\Property(property="message", type="string", example="Too many login attempts. Please try again later."), @OA\Property(property="details", type="object", @OA\Property(property="retry_after", type="integer", example=60))), @OA\Property(property="meta", type="object", @OA\Property(property="retry_after", type="integer", example=60)), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Too many login attempts. Please try again later.")))
-     * )
+     * Authenticate user and get token.
+     * Authenticates a user using username and password and returns an access token and refresh token.
+     * Requires the X-Device-ID header.
      */
     public function login(Request $request)
     {
@@ -198,29 +171,8 @@ class AuthController extends Controller
     }
 
     /**
-     * @OA\Post(
-     *     path="/api/auth/refresh-token",
-     *     summary="Refresh access token",
-     *     description="Refreshes an expired access token using a valid refresh token. Requires the X-Device-ID header.",
-     *     tags={"Auth"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         description="Refresh token",
-     *         @OA\JsonContent(
-     *             required={"refresh_token"},
-     *             @OA\Property(property="refresh_token", type="string", example="eyJ...")
-     *         )
-     *     ),
-     *     @OA\Header(
-     *         header="X-Device-ID",
-     *         required=true,
-     *         description="Unique identifier of the device making the request (minimum 8 alphanumeric characters, underscores, or hyphens)"
-     *     ),
-     *     @OA\Response(response=200, description="Token refreshed successfully", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="success"), @OA\Property(property="data", type="object", @OA\Property(property="access_token", type="string", example="eyJ..."), @OA\Property(property="token_type", type="string", example="Bearer"), @OA\Property(property="refresh_token", type="string", example="eyJ..."), @OA\Property(property="expires_at", type="string", format="date-time", example="2025-05-02T10:00:00+00:00")), @OA\Property(property="error", type="null"), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Token refreshed successfully"))),
-     *     @OA\Response(response=400, description="Invalid input or missing Device ID", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="error"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="object", @OA\Property(property="code", type="integer", example=400), @OA\Property(property="message", type="string", example="Invalid input. Please provide a valid refresh token."), @OA\Property(property="details", type="object", @OA\Property(property="refresh_token", type="array", @OA\Items(type="string")), @OA\Property(property="device_id", type="array", @OA\Items(type="string")))), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Invalid input. Please provide a valid refresh token."))),
-     *     @OA\Response(response=401, description="Invalid or expired refresh token", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="error"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="object", @OA\Property(property="code", type="integer", example=401), @OA\Property(property="message", type="string", example="Invalid or expired refresh token. Please login again."), @OA\Property(property="details", type="null")), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Invalid or expired refresh token. Please login again."))),
-     *     @OA\Response(response=404, description="User not found", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="error"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="object", @OA\Property(property="code", type="integer", example=404), @OA\Property(property="message", type="string", example="User not found."), @OA\Property(property="details", type="null")), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="User not found.")))
-     * )
+     * Refresh access token.
+     * Refreshes an expired access token using a valid refresh token. Requires the X-Device-ID header.
      */
     public function refresh(Request $request)
     {
@@ -352,21 +304,9 @@ class AuthController extends Controller
     }
 
     /**
-     * @OA\Post(
-     *     path="/api/auth/logout",
-     *     summary="Logout user",
-     *     description="Invalidates the current access token and refresh token for the authenticated user. Requires the X-Device-ID header.",
-     *     tags={"Auth"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Header(
-     *         header="X-Device-ID",
-     *         required=true,
-     *         description="Unique identifier of the device making the request (minimum 8 alphanumeric characters, underscores, or hyphens)"
-     *     ),
-     *     @OA\Response(response=200, description="Logged out successfully", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="success"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="null"), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Logged out successfully"))),
-     *     @OA\Response(response=400, description="Missing or invalid Device ID", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="error"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="object", @OA\Property(property="code", type="integer", example=400), @OA\Property(property="message", type="string", example="Device ID is required. Please include X-Device-ID in the request header."), @OA\Property(property="details", type="object", @OA\Property(property="device_id", type="array", @OA\Items(type="string")))), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Device ID is required. Please include X-Device-ID in the request header."))),
-     *     @OA\Response(response=401, description="Unauthorized", @OA\JsonContent(type="object", @OA\Property(property="status", type="string", example="error"), @OA\Property(property="data", type="null"), @OA\Property(property="error", type="object", @OA\Property(property="code", type="integer", example=401), @OA\Property(property="message", type="string", example="Unauthorized"), @OA\Property(property="details", type="null")), @OA\Property(property="meta", type="null"), @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"), @OA\Property(property="message", type="string", example="Unauthorized")))
-     * )
+     * Logout user.
+     * Invalidates the current access token and refresh token for the authenticated user.
+     * Requires the X-Device-ID header.
      */
     public function logout(Request $request)
     {
@@ -452,143 +392,9 @@ class AuthController extends Controller
     }
 
     /**
-     * @OA\Post(
-     *     path="/api/auth/validate-token",
-     *     summary="Validate access token",
-     *     description="Validates an access token provided in the Authorization: Bearer <token> header. Requires the X-Device-ID header for device validation.",
-     *     tags={"Auth"},
-     *     @OA\Header(
-     *         header="Authorization",
-     *         required=true,
-     *         description="Bearer token for authentication"
-     *     ),
-     *     @OA\Header(
-     *         header="X-Device-ID",
-     *         required=true,
-     *         description="Unique identifier of the device making the request (minimum 8 alphanumeric characters, underscores, or hyphens)"
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Token is valid",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="status", type="string", example="success"),
-     *             @OA\Property(
-     *                 property="data",
-     *                 type="object",
-     *                 @OA\Property(property="is_valid", type="boolean", example=true),
-     *                 @OA\Property(
-     *                     property="user",
-     *                     type="object",
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="username", type="string", example="johndoe"),
-     *                     @OA\Property(property="email", type="string", example="johndoe@example.com")
-     *                 ),
-     *                 @OA\Property(
-     *                     property="token",
-     *                     type="object",
-     *                     @OA\Property(property="id", type="string", example="abcdef123456"),
-     *                     @OA\Property(property="expires_at", type="string", format="date-time", nullable=true, example="2025-05-02T10:00:00+00:00"),
-     *                     @OA\Property(property="last_used_at", type="string", format="date-time", nullable=true, example="2025-04-25T15:20:00+00:00"),
-     *                     @OA\Property(property="device_id", type="string", example="device123")
-     *                 )
-     *             ),
-     *             @OA\Property(property="error", type="null"),
-     *             @OA\Property(property="meta", type="null"),
-     *             @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"),
-     *             @OA\Property(property="message", type="string", example="Token is valid")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Device ID is required or invalid",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="data", type="null"),
-     *             @OA\Property(
-     *                 property="error",
-     *                 type="object",
-     *                 @OA\Property(property="code", type="integer", example=400),
-     *                 @OA\Property(property="message", type="string", example="Device ID is required. Please include X-Device-ID in the request header."),
-     *                 @OA\Property(
-     *                     property="details",
-     *                     type="object",
-     *                     @OA\Property(property="device_id", type="array", @OA\Items(type="string"))
-     *                 )
-     *             ),
-     *             @OA\Property(property="meta", type="null"),
-     *             @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"),
-     *             @OA\Property(property="message", type="string", example="Device ID is required. Please include X-Device-ID in the request header.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="Unauthorized - No token, invalid token, or device mismatch",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="data", type="null"),
-     *             @OA\Property(
-     *                 property="error",
-     *                 type="object",
-     *                 @OA\Property(property="code", type="integer", example=401),
-     *                 @OA\Property(property="message", type="string", example="No token provided. Please include a valid Bearer token."),
-     *                 @OA\Property(property="details", type="null")
-     *             ),
-     *             @OA\Property(
-     *                 property="meta",
-     *                 type="object",
-     *                 @OA\Property(property="current_device_id", type="string", nullable=true, example="deviceABC"),
-     *                 @OA\Property(property="expected_device_id", type="string", nullable=true, example="deviceXYZ")
-     *             ),
-     *             @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"),
-     *             @OA\Property(property="message", type="string", example="No token provided. Please include a valid Bearer token.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="User not found for this token",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="data", type="null"),
-     *             @OA\Property(
-     *                 property="error",
-     *                 type="object",
-     *                 @OA\Property(property="code", type="integer", example=404),
-     *                 @OA\Property(property="message", type="string", example="User not found for this token."),
-     *                 @OA\Property(property="details", type="null")
-     *             ),
-     *             @OA\Property(property="meta", type="null"),
-     *             @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"),
-     *             @OA\Property(property="message", type="string", example="User not found for this token.")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Internal server error during token validation",
-     *         @OA\JsonContent(
-     *             type="object",
-     *             @OA\Property(property="status", type="string", example="error"),
-     *             @OA\Property(property="data", type="null"),
-     *             @OA\Property(
-     *                 property="error",
-     *                 type="object",
-     *                 @OA\Property(property="code", type="integer", example=500),
-     *                 @OA\Property(property="message", type="string", example="Failed to validate token due to an internal error. Please try again."),
-     *                 @OA\Property(
-     *                     property="details",
-     *                     type="object",
-     *                     @OA\Property(property="exception", type="string", example="...")
-     *                 )
-     *             ),
-     *             @OA\Property(property="meta", type="null"),
-     *             @OA\Property(property="last_updated", type="string", format="date-time", example="2025-04-25T15:25:00+00:00"),
-     *             @OA\Property(property="message", type="string", example="Failed to validate token due to an internal error. Please try again.")
-     *         )
-     *     )
-     * )
+     * Validate access token.
+     * Validates an access token provided in the Authorization: Bearer <token> header.
+     * Requires the X-Device-ID header for device validation.
      */
     public function validateToken(Request $request)
     {
