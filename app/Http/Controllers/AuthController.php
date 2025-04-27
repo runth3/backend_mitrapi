@@ -25,7 +25,6 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        // Validasi X-Device-ID
         $deviceId = $request->header('X-Device-ID');
         if (!$deviceId) {
             Log::warning('Login failed: Device ID missing', [
@@ -40,8 +39,7 @@ class AuthController extends Controller
                 details: ['device_id' => 'The X-Device-ID header is required.']
             );
         }
-
-        // Validasi format Device ID
+    
         if (!preg_match('/^[a-zA-Z0-9_-]{8,}$/', $deviceId)) {
             Log::warning('Login failed: Invalid Device ID format', [
                 'username' => $request->username,
@@ -56,8 +54,7 @@ class AuthController extends Controller
                 details: ['device_id' => 'Invalid Device ID format.']
             );
         }
-
-        // Rate limiting berdasarkan username dan device ID
+    
         $rateLimitKey = 'login:' . $request->username . ':' . $deviceId;
         if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
             Log::warning('Login rate limit exceeded', [
@@ -73,12 +70,12 @@ class AuthController extends Controller
                 meta: ['retry_after' => RateLimiter::availableIn($rateLimitKey)]
             );
         }
-
+    
         $validator = Validator::make($request->all(), [
             'username' => 'required|string',
             'password' => 'required|string',
         ]);
-
+    
         if ($validator->fails()) {
             RateLimiter::increment($rateLimitKey, 60);
             Log::info('Login failed: Validation error', [
@@ -95,7 +92,7 @@ class AuthController extends Controller
                 details: $validator->errors()->toArray()
             );
         }
-
+    
         Log::info('Login attempt', [
             'username' => $request->username,
             'ip' => $request->ip(),
@@ -103,9 +100,9 @@ class AuthController extends Controller
             'device_id' => $deviceId,
             'headers' => $request->headers->all(),
         ]);
-
+    
         $user = User::where('username', $request->username)->first();
-
+    
         if (!$user || !Hash::check($request->password, $user->password)) {
             RateLimiter::increment($rateLimitKey, 60);
             Log::info('Login failed: Invalid credentials', [
@@ -121,12 +118,18 @@ class AuthController extends Controller
                 details: null
             );
         }
-
+    
         try {
             RateLimiter::clear($rateLimitKey);
-            $accessToken = $user->createToken('auth_token', ['*'], null, ['device_id' => $deviceId])->plainTextToken;
+            // Buat access token
+            $tokenResult = $user->createToken('auth_token', ['*'], now()->addDays(7));
+            $accessToken = $tokenResult->accessToken;
+            // Simpan device_id secara eksplisit
+            $accessToken->forceFill(['device_id' => $deviceId])->save();
+            $accessTokenString = $tokenResult->plainTextToken;
+    
             $refreshToken = $this->generateRefreshToken($user, $deviceId);
-
+    
             Log::info('Login success', [
                 'user_id' => $user->id,
                 'username' => $user->username,
@@ -135,10 +138,10 @@ class AuthController extends Controller
                 'user_agent' => $request->userAgent(),
                 'headers' => $request->headers->all(),
             ]);
-
+    
             return $this->successResponse(
                 data: [
-                    'access_token' => $accessToken,
+                    'access_token' => $accessTokenString,
                     'token_type' => 'Bearer',
                     'refresh_token' => $refreshToken->token,
                     'user' => [
@@ -169,140 +172,145 @@ class AuthController extends Controller
             );
         }
     }
+    
 
     /**
      * Refresh access token.
      * Refreshes an expired access token using a valid refresh token. Requires the X-Device-ID header.
      */
-    public function refresh(Request $request)
-    {
-        // Validasi X-Device-ID
-        $deviceId = $request->header('X-Device-ID');
-        if (!$deviceId) {
-            Log::warning('Refresh failed: Device ID missing', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'headers' => $request->headers->all(),
-            ]);
-            return $this->errorResponse(
-                message: 'Device ID is required. Please include X-Device-ID in the request header.',
-                statusCode: 400,
-                details: ['device_id' => 'The X-Device-ID header is required.']
-            );
-        }
+    
 
-        // Validasi format Device ID
-        if (!preg_match('/^[a-zA-Z0-9_-]{8,}$/', $deviceId)) {
-            Log::warning('Refresh failed: Invalid Device ID format', [
-                'ip' => $request->ip(),
-                'device_id' => $deviceId,
-                'user_agent' => $request->userAgent(),
-                'headers' => $request->headers->all(),
-            ]);
-            return $this->errorResponse(
-                message: 'Invalid Device ID format. Device ID must be at least 8 characters and contain only alphanumeric characters, underscores, or hyphens.',
-                statusCode: 400,
-                details: ['device_id' => 'Invalid Device ID format.']
-            );
-        }
-
-        $validator = Validator::make($request->all(), [
-            'refresh_token' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            Log::info('Refresh failed: Validation error', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'device_id' => $deviceId,
-                'errors' => $validator->errors()->toArray(),
-                'headers' => $request->headers->all(),
-            ]);
-            return $this->errorResponse(
-                message: 'Invalid input. Please provide a valid refresh token.',
-                statusCode: 400,
-                details: $validator->errors()->toArray()
-            );
-        }
-
-        $refreshToken = RefreshToken::where('token', $request->refresh_token)
-            ->where('device_id', $deviceId)
-            ->first();
-
-        if (!$refreshToken || $refreshToken->expires_at < Carbon::now()) {
-            Log::info('Refresh failed: Invalid or expired refresh token', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'device_id' => $deviceId,
-                'headers' => $request->headers->all(),
-            ]);
-            return $this->errorResponse(
-                message: 'Invalid or expired refresh token. Please login again.',
-                statusCode: 401,
-                details: null
-            );
-        }
-
-        $user = User::find($refreshToken->user_id);
-
-        if (!$user) {
-            Log::info('Refresh failed: User not found', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'device_id' => $deviceId,
-                'headers' => $request->headers->all(),
-            ]);
-            return $this->errorResponse(
-                message: 'User not found.',
-                statusCode: 404,
-                details: null
-            );
-        }
-
-        try {
-            $user->tokens()->where('device_id', $deviceId)->delete();
-            $refreshToken->delete();
-
-            $newAccessToken = $user->createToken('auth_token', ['*'], null, ['device_id' => $deviceId])->plainTextToken;
-            $newRefreshToken = $this->generateRefreshToken($user, $deviceId);
-
-            Log::info('Token refreshed', [
-                'user_id' => $user->id,
-                'username' => $user->username,
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'device_id' => $deviceId,
-                'headers' => $request->headers->all(),
-            ]);
-
-            return $this->successResponse(
-                data: [
-                    'access_token' => $newAccessToken,
-                    'token_type' => 'Bearer',
-                    'refresh_token' => $newRefreshToken->token,
-                    'expires_at' => Carbon::now()->addDays(7)->toIso8601String(),
-                ],
-                message: 'Token refreshed successfully',
-                meta: null,
-                statusCode: 200
-            );
-        } catch (\Exception $e) {
-            Log::error('Refresh failed: Token creation error', [
-                'user_id' => $user->id ?? 'unknown',
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'device_id' => $deviceId,
-                'error' => $e->getMessage(),
-                'headers' => $request->headers->all(),
-            ]);
-            return $this->errorResponse(
-                message: 'Failed to refresh token.',
-                statusCode: 500,
-                details: ['exception' => $e->getMessage()]
-            );
-        }
-    }
-
+     public function refresh(Request $request)
+     {
+         $deviceId = $request->header('X-Device-ID');
+         if (!$deviceId) {
+             Log::warning('Refresh failed: Device ID missing', [
+                 'ip' => $request->ip(),
+                 'user_agent' => $request->userAgent(),
+                 'headers' => $request->headers->all(),
+             ]);
+             return $this->errorResponse(
+                 message: 'Device ID is required. Please include X-Device-ID in the request header.',
+                 statusCode: 400,
+                 details: ['device_id' => 'The X-Device-ID header is required.']
+             );
+         }
+     
+         if (!preg_match('/^[a-zA-Z0-9_-]{8,}$/', $deviceId)) {
+             Log::warning('Refresh failed: Invalid Device ID format', [
+                 'ip' => $request->ip(),
+                 'device_id' => $deviceId,
+                 'user_agent' => $request->userAgent(),
+                 'headers' => $request->headers->all(),
+             ]);
+             return $this->errorResponse(
+                 message: 'Invalid Device ID format. Device ID must be at least 8 characters and contain only alphanumeric characters, underscores, or hyphens.',
+                 statusCode: 400,
+                 details: ['device_id' => 'Invalid Device ID format.']
+             );
+         }
+     
+         $validator = Validator::make($request->all(), [
+             'refresh_token' => 'required|string',
+         ]);
+     
+         if ($validator->fails()) {
+             Log::info('Refresh failed: Validation error', [
+                 'ip' => $request->ip(),
+                 'user_agent' => $request->userAgent(),
+                 'device_id' => $deviceId,
+                 'errors' => $validator->errors()->toArray(),
+                 'headers' => $request->headers->all(),
+             ]);
+             return $this->errorResponse(
+                 message: 'Invalid input. Please provide a valid refresh token.',
+                 statusCode: 400,
+                 details: $validator->errors()->toArray()
+             );
+         }
+     
+         $refreshToken = RefreshToken::where('token', $request->refresh_token)
+             ->where('device_id', $deviceId)
+             ->first();
+     
+         if (!$refreshToken || $refreshToken->expires_at < Carbon::now()) {
+             Log::info('Refresh failed: Invalid or expired refresh token', [
+                 'ip' => $request->ip(),
+                 'user_agent' => $request->userAgent(),
+                 'device_id' => $deviceId,
+                 'headers' => $request->headers->all(),
+             ]);
+             return $this->errorResponse(
+                 message: 'Invalid or expired refresh token. Please login again.',
+                 statusCode: 401,
+                 details: null
+             );
+         }
+     
+         $user = User::find($refreshToken->user_id);
+     
+         if (!$user) {
+             Log::info('Refresh failed: User not found', [
+                 'ip' => $request->ip(),
+                 'user_agent' => $request->userAgent(),
+                 'device_id' => $deviceId,
+                 'headers' => $request->headers->all(),
+             ]);
+             return $this->errorResponse(
+                 message: 'User not found.',
+                 statusCode: 404,
+                 details: null
+             );
+         }
+     
+         try {
+             $user->tokens()->where('device_id', $deviceId)->delete();
+             $refreshToken->delete();
+     
+             // Buat access token baru
+             $tokenResult = $user->createToken('auth_token', ['*'], now()->addDays(7));
+             $newAccessToken = $tokenResult->accessToken;
+             $newAccessToken->forceFill(['device_id' => $deviceId])->save();
+             $newAccessTokenString = $tokenResult->plainTextToken;
+     
+             $newRefreshToken = $this->generateRefreshToken($user, $deviceId);
+     
+             Log::info('Token refreshed', [
+                 'user_id' => $user->id,
+                 'username' => $user->username,
+                 'ip' => $request->ip(),
+                 'user_agent' => $request->userAgent(),
+                 'device_id' => $deviceId,
+                 'headers' => $request->headers->all(),
+             ]);
+     
+             return $this->successResponse(
+                 data: [
+                     'access_token' => $newAccessTokenString,
+                     'token_type' => 'Bearer',
+                     'refresh_token' => $newRefreshToken->token,
+                     'expires_at' => Carbon::now()->addDays(7)->toIso8601String(),
+                 ],
+                 message: 'Token refreshed successfully',
+                 meta: null,
+                 statusCode: 200
+             );
+         } catch (\Exception $e) {
+             Log::error('Refresh failed: Token creation error', [
+                 'user_id' => $user->id ?? 'unknown',
+                 'ip' => $request->ip(),
+                 'user_agent' => $request->userAgent(),
+                 'device_id' => $deviceId,
+                 'error' => $e->getMessage(),
+                 'headers' => $request->headers->all(),
+             ]);
+             return $this->errorResponse(
+                 message: 'Failed to refresh token.',
+                 statusCode: 500,
+                 details: ['exception' => $e->getMessage()]
+             );
+         }
+     }
     /**
      * Logout user.
      * Invalidates the current access token and refresh token for the authenticated user.
