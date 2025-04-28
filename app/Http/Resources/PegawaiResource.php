@@ -5,8 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class PegawaiResource extends JsonResource
-{
-    protected $officeRelation;
+{ 
 
     /**
      * Constructor to accept resource and office relation.
@@ -14,10 +13,9 @@ class PegawaiResource extends JsonResource
      * @param mixed $resource
      * @param string $officeRelation
      */
-    public function __construct($resource, $officeRelation)
+    public function __construct($resource)
     {
-        parent::__construct($resource);
-        $this->officeRelation = $officeRelation;
+        parent::__construct($resource); 
     }
 
     /**
@@ -28,14 +26,7 @@ class PegawaiResource extends JsonResource
      */
     public function toArray($request)
     {
-        $data = parent::toArray($request);
-        $office = $this->resource->{$this->officeRelation};
-
-        $data['office'] = $office ? [
-            'id_instansi' => $office->id_instansi ?? $office->id ?? null,
-            'nama_instansi' => $office->nama_instansi ?? $office->nama ?? null,
-        ] : null;
-
+        $data = parent::toArray($request); 
         return $data;
     }
 }

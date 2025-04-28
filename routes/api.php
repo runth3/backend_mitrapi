@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 // Public routes (no authentication)
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->name('login');
+    Route::post('login-with-data', [AuthController::class, 'loginWithData']);
     Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token');
     Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token'); // Pindah ke publik
 });

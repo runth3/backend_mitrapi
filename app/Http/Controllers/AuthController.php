@@ -1,8 +1,21 @@
 <?php
-
 namespace App\Http\Controllers;
 
+use App\Http\Resources\OfficeResource;
+use App\Http\Resources\PegawaiResource;
+use App\Http\Resources\DataOfficeEkinerjaResource;
+use App\Models\DataOfficeEkinerja;
+use App\Http\Resources\AttendanceCollection;
+use App\Http\Resources\PerformanceCollection;
+use App\Http\Resources\NewsCollection;
 use App\Models\User;
+use App\Models\DataPegawaiSimpeg;
+use App\Models\Performance;
+use App\Models\Attendance;
+use App\Models\News;
+use App\Models\DataOfficeKoordinat;
+use App\Models\DataOfficeSimpeg;
+use App\Models\FaceModel;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,11 +26,199 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
     use ApiResponseTrait;
 
+    /**
+     * Authenticate user and get token with additional data.
+     * Authenticates a user and returns an access token, refresh token, and additional data (office, face model, attendance, performance).
+     * Requires the X-Device-ID header.
+     */
+    public function loginWithData(Request $request)
+    {
+        $deviceId = $request->header('X-Device-ID') ?? $request->input('device_id');
+        if (!$deviceId) {
+            Log::warning('Login with data failed: Device ID missing', [
+                'username' => $request->username,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Device ID is required. Include X-Device-ID header or device_id in body.',
+                statusCode: 400,
+                details: ['device_id' => 'The device_id is required.']
+            );
+        }
+
+        if (!preg_match('/^[a-zA-Z0-9_-]{8,}$/', $deviceId)) {
+            Log::warning('Login with data failed: Invalid Device ID format', [
+                'username' => $request->username,
+                'ip' => $request->ip(),
+                'device_id' => $deviceId,
+                'user_agent' => $request->userAgent(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Invalid Device ID format. Must be at least 8 characters and contain only alphanumeric characters, underscores, or hyphens.',
+                statusCode: 400,
+                details: ['device_id' => 'Invalid Device ID format.']
+            );
+        }
+
+        $rateLimitKey = 'login:' . $request->username . ':' . $deviceId;
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            Log::warning('Login with data rate limit exceeded', [
+                'username' => $request->username,
+                'ip' => $request->ip(),
+                'device_id' => $deviceId,
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Too many login attempts. Please try again later.',
+                statusCode: 429,
+                details: ['retry_after' => RateLimiter::availableIn($rateLimitKey)],
+                meta: ['retry_after' => RateLimiter::availableIn($rateLimitKey)]
+            );
+        }
+
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|string',
+            'password' => 'required|string',
+            'device_id' => 'required|string|min:8',
+        ]);
+
+        if ($validator->fails()) {
+            RateLimiter::increment($rateLimitKey, 60);
+            Log::info('Login with data failed: Validation error', [
+                'username' => $request->username,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'device_id' => $deviceId,
+                'errors' => $validator->errors()->toArray(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Invalid input. Please check your username, password, and device_id.',
+                statusCode: 400,
+                details: $validator->errors()->toArray()
+            );
+        }
+
+        Log::info('Login with data attempt', [
+            'username' => $request->username,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'device_id' => $deviceId,
+            'headers' => $request->headers->all(),
+        ]);
+
+        $user = User::where('username', $request->username)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            RateLimiter::increment($rateLimitKey, 60);
+            Log::info('Login with data failed: Invalid credentials', [
+                'username' => $request->username,
+                'ip' => $request->ip(),
+                'device_id' => $deviceId,
+                'user_agent' => $request->userAgent(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Invalid login credentials.',
+                statusCode: 401,
+                details: null
+            );
+        }
+
+        try {
+            RateLimiter::clear($rateLimitKey);
+
+            // Buat access token
+            $tokenResult = $user->createToken('auth_token', ['*'], now()->addDays(7));
+            $accessToken = $tokenResult->accessToken;
+            $accessToken->forceFill(['device_id' => $deviceId])->save();
+            $accessTokenString = $tokenResult->plainTextToken;
+
+            $refreshToken = $this->generateRefreshToken($user, $deviceId);
+
+            // Ambil data tambahan
+            $dataPegawai = DataPegawaiSimpeg::where('nip', $user->username)->first();
+            $dataOffice = DataOfficeSimpeg::where('id_instansi', $dataPegawai ? $dataPegawai->id_instansi : null)->first();
+            $coordinates = $dataPegawai ? DataOfficeKoordinat::where('id_instansi', $dataPegawai->id_instansi)
+                ->where('aktif', 0)
+                ->first() : null;
+            $performanceConfig = DataOfficeEkinerja::where('id', $dataPegawai->id_instansi)->first();
+            $faceModel = FaceModel::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->latest('updated_at')
+                ->first();
+            $attendances = Attendance::where('nip_pegawai', $user->username)
+                ->whereMonth('checktime', now()->month)
+                ->whereYear('checktime', now()->year)
+                ->get();
+            $performances = Performance::where('NIP', $user->username)
+                ->whereMonth('tglKinerja', now()->month)
+                ->whereYear('tglKinerja', now()->year)
+                ->get();
+            $news = News::orderBy('published_at', 'desc')->take(10)->get();
+
+            $response = [
+                'access_token' => $accessTokenString,
+                'token_type' => 'Bearer',
+                'expires_at' => now()->addDays(7)->toIso8601String(),
+                'device_id' => $deviceId,
+                'user' => [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                ],
+                'profile' => $dataPegawai ? new PegawaiResource($dataPegawai) : null,
+                'office' => $dataOffice ? new OfficeResource($dataOffice, $coordinates,new DataOfficeEkinerjaResource($performanceConfig)) : null,
+                 'face_model' => $faceModel ? [
+                    'url' => Storage::disk('local')->temporaryUrl($faceModel->image_path, now()->addMinutes(60)),
+                    'last_updated' => $faceModel->updated_at->toIso8601String(),
+                ] : null,
+                'attendance' => new AttendanceCollection($attendances),
+                'performance' => new PerformanceCollection($performances),
+                'news' => new NewsCollection($news),
+            ];
+
+            Log::info('Login with data success', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'device_id' => $deviceId,
+                'user_agent' => $request->userAgent(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            return $this->successResponse(
+                data: $response,
+                message: 'Login successful',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            RateLimiter::increment($rateLimitKey, 60);
+            Log::error('Login with data failed: Server error', [
+                'user_id' => $user->id ?? 'unknown',
+                'username' => $request->username,
+                'ip' => $request->ip(),
+                'device_id' => $deviceId,
+                'error' => $e->getMessage(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Failed to process login.',
+                statusCode: 500,
+                details: ['exception' => $e->getMessage()]
+            );
+        }
+    }
     /**
      * Authenticate user and get token.
      * Authenticates a user using username and password and returns an access token and refresh token.
