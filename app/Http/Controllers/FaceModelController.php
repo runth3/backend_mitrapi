@@ -2,22 +2,54 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\FaceModelResource;
+use App\Http\Resources\FaceModelCollection;
 use App\Models\FaceModel;
 use App\Models\User;
+use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage; 
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+
 class FaceModelController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
      * Get all face models for the authenticated user.
      */
     public function index(Request $request)
     {
-        $user = $request->user();
-        $faceModels = FaceModel::where('user_id', $user->id)->get();
+        try {
+            $user = $request->user();
+            $faceModels = FaceModel::where('user_id', $user->id)->get();
 
-        return response()->json($faceModels);
+            Log::info('Face models retrieved', [
+                'user_id' => $user->id,
+                'count' => $faceModels->count(),
+                'ip' => $request->ip(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            return $this->successResponse(
+                data: new FaceModelCollection($faceModels),
+                message: 'Face models retrieved successfully',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve face models', [
+                'user_id' => $request->user()->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Failed to retrieve face models',
+                statusCode: 500,
+                details: ['exception' => $e->getMessage()]
+            );
+        }
     }
 
     /**
@@ -25,65 +57,152 @@ class FaceModelController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Validate image file
-            'user_id' => 'nullable|exists:users,id', // Validate user_id if present
-        ]);
+        try {
+            $request->validate([
+                'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'user_id' => 'nullable|exists:users,id',
+            ]);
 
-        $authenticatedUser = $request->user(); // Get the authenticated user
-        $targetUserId = $request->user_id;
+            $authenticatedUser = $request->user();
+            $targetUserId = $request->input('user_id');
 
-        // Determine the target user and folder path
-        if ($targetUserId) {
-            // Admin is uploading for a specific user
-            if (!$authenticatedUser->is_admin) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+            if ($targetUserId) {
+                if (!$authenticatedUser->is_admin) {
+                    Log::warning('Unauthorized attempt to upload face model for another user', [
+                        'user_id' => $authenticatedUser->id,
+                        'target_user_id' => $targetUserId,
+                        'ip' => $request->ip(),
+                        'headers' => $request->headers->all(),
+                    ]);
+                    return $this->errorResponse(
+                        message: 'Unauthorized: Only admins can upload for other users',
+                        statusCode: 403,
+                        details: null
+                    );
+                }
+                $targetUser = User::findOrFail($targetUserId);
+            } else {
+                $targetUser = $authenticatedUser;
             }
-            $targetUser = User::findOrFail($targetUserId);
-        } else {
-            // Regular user is uploading for themselves
-            $targetUser = $authenticatedUser;
+
+            $folderPath = 'faces/' . $targetUser->username;
+            $fileName = time() . '.' . $request->file('image')->getClientOriginalExtension();
+            $filePath = $request->file('image')->storeAs($folderPath, $fileName, 'local');
+
+            $faceModel = FaceModel::create([
+                'user_id' => $targetUser->id,
+                'image_path' => $filePath,
+                'is_active' => false,
+            ]);
+
+            Log::info('Face model created', [
+                'user_id' => $targetUser->id,
+                'face_model_id' => $faceModel->id,
+                'file_path' => $filePath,
+                'ip' => $request->ip(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            return $this->successResponse(
+                data: new FaceModelResource($faceModel),
+                message: 'Face model created successfully',
+                meta: null,
+                statusCode: 201
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::info('Face model creation failed: Validation error', [
+                'user_id' => $request->user()->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'errors' => $e->errors(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Invalid input',
+                statusCode: 400,
+                details: $e->errors()
+            );
+        } catch (\Exception $e) {
+            Log::error('Face model creation failed', [
+                'user_id' => $request->user()->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Failed to create face model',
+                statusCode: 500,
+                details: ['exception' => $e->getMessage()]
+            );
         }
-
-        // Generate a unique folder path based on the target user's username and timestamp
-        $folderPath = 'faces/' . $targetUser->username;
-        $fileName = time() . '.' . $request->file('image')->getClientOriginalExtension();
-
-        // Store the image in the respective folder using the local (private) disk
-        $filePath = $request->file('image')->storeAs($folderPath, $fileName, 'local');
-
-        // Create a new face model record
-        $faceModel = FaceModel::create([
-            'user_id' => $targetUser->id, // Use the target user's ID
-            'image_path' => $filePath, // Save the relative path to the database
-            'is_active' => false, // Default to inactive
-        ]);
-
-        return response()->json($faceModel, 201);
     }
 
     /**
      * Set a specific face model as active.
      */
     public function setActive(Request $request, $id)
-    { 
-     
-        $user = $request->user();
-        $faceModel = FaceModel::findOrFail($id);
-        // check faceModel is available
-        if (!$faceModel) {
-            return response()->json(['message' => 'Face model not found'], 404);
+    {
+        try {
+            $user = $request->user();
+            $faceModel = FaceModel::find($id);
+
+            if (!$faceModel) {
+                Log::warning('Face model not found', [
+                    'user_id' => $user->id,
+                    'face_model_id' => $id,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'Face model not found',
+                    statusCode: 404,
+                    details: null
+                );
+            }
+
+            if ($faceModel->user_id !== $user->id && !$user->is_admin) {
+                Log::warning('Unauthorized attempt to set active face model', [
+                    'user_id' => $user->id,
+                    'face_model_id' => $id,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'Unauthorized: You cannot modify this face model',
+                    statusCode: 403,
+                    details: null
+                );
+            }
+
+            FaceModel::where('user_id', $faceModel->user_id)->update(['is_active' => false]);
+            $faceModel->update(['is_active' => true]);
+
+            Log::info('Face model set as active', [
+                'user_id' => $faceModel->user_id,
+                'face_model_id' => $id,
+                'ip' => $request->ip(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            return $this->successResponse(
+                data: new FaceModelResource($faceModel),
+                message: 'Face model set as active',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to set active face model', [
+                'user_id' => $request->user()->id ?? 'unknown',
+                'face_model_id' => $id,
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Failed to set active face model',
+                statusCode: 500,
+                details: ['exception' => $e->getMessage()]
+            );
         }
-        // set faceModel is_active to false using faceModel->user_id
-        FaceModel::where('user_id', $faceModel->user_id)->update(['is_active' => false]);
-      
-        // Activate the selected face model
-        FaceModel::where('id', $id)->update(['is_active' => true]); 
-        Log::info('Sort Parameters:', [
-            'id' => $id, 
-            'user_id' => $faceModel->user_id
-        ]);
-        return response()->json(['message' => 'Face model set as active', 'face_model' => $faceModel]);
     }
 
     /**
@@ -91,19 +210,52 @@ class FaceModelController extends Controller
      */
     public function getActive(Request $request)
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
+            $faceModel = FaceModel::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->latest('updated_at')
+                ->first();
 
-        // Retrieve the latest active face model for the user
-        $faceModel = FaceModel::where('user_id', $user->id)
-            ->where('is_active', true)
-            ->latest('updated_at') // Sort by the most recently updated active model
-            ->first();
+            if (!$faceModel) {
+                Log::info('No active face model found', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'No active face model found',
+                    statusCode: 404,
+                    details: null
+                );
+            }
 
-        if (!$faceModel) {
-            return response()->json(['message' => 'No active face model found'], 404);
+            Log::info('Active face model retrieved', [
+                'user_id' => $user->id,
+                'face_model_id' => $faceModel->id,
+                'ip' => $request->ip(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            return $this->successResponse(
+                data: new FaceModelResource($faceModel),
+                message: 'Active face model retrieved successfully',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve active face model', [
+                'user_id' => $request->user()->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Failed to retrieve active face model',
+                statusCode: 500,
+                details: ['exception' => $e->getMessage()]
+            );
         }
-
-        return response()->json($faceModel);
     }
 
     /**
@@ -111,12 +263,54 @@ class FaceModelController extends Controller
      */
     public function destroy(Request $request, $id)
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
+            $faceModel = FaceModel::where('id', $id)->where('user_id', $user->id)->first();
 
-        $faceModel = FaceModel::where('id', $id)->where('user_id', $user->id)->firstOrFail();
-        $faceModel->delete();
+            if (!$faceModel) {
+                Log::warning('Face model not found or unauthorized', [
+                    'user_id' => $user->id,
+                    'face_model_id' => $id,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'Face model not found or you are not authorized',
+                    statusCode: 404,
+                    details: null
+                );
+            }
 
-        return response()->json(['message' => 'Face model deleted successfully']);
+            Storage::disk('local')->delete($faceModel->image_path);
+            $faceModel->delete();
+
+            Log::info('Face model deleted', [
+                'user_id' => $user->id,
+                'face_model_id' => $id,
+                'ip' => $request->ip(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            return $this->successResponse(
+                data: null,
+                message: 'Face model deleted successfully',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to delete face model', [
+                'user_id' => $request->user()->id ?? 'unknown',
+                'face_model_id' => $id,
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Failed to delete face model',
+                statusCode: 500,
+                details: ['exception' => $e->getMessage()]
+            );
+        }
     }
 
     /**
@@ -124,38 +318,144 @@ class FaceModelController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
+            $faceModel = FaceModel::find($id);
 
-        // Find the face model
-        $faceModel = FaceModel::findOrFail($id);
+            if (!$faceModel) {
+                Log::warning('Face model not found', [
+                    'user_id' => $user->id,
+                    'face_model_id' => $id,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'Face model not found',
+                    statusCode: 404,
+                    details: null
+                );
+            }
 
-        // Check if the user is the owner or an admin
-        if ($faceModel->user_id !== $user->id && !$user->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            if ($faceModel->user_id !== $user->id && !$user->is_admin) {
+                Log::warning('Unauthorized attempt to view face model', [
+                    'user_id' => $user->id,
+                    'face_model_id' => $id,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'Unauthorized: You cannot view this face model',
+                    statusCode: 403,
+                    details: null
+                );
+            }
+
+            $filePath = storage_path('app/' . $faceModel->image_path);
+
+            if (!file_exists($filePath)) {
+                Log::warning('Face model file not found', [
+                    'user_id' => $user->id,
+                    'face_model_id' => $id,
+                    'file_path' => $filePath,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'Face model file not found',
+                    statusCode: 404,
+                    details: null
+                );
+            }
+
+            Log::info('Face model retrieved', [
+                'user_id' => $user->id,
+                'face_model_id' => $id,
+                'ip' => $request->ip(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            return response()->file($filePath);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve face model', [
+                'user_id' => $request->user()->id ?? 'unknown',
+                'face_model_id' => $id,
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Failed to retrieve face model',
+                statusCode: 500,
+                details: ['exception' => $e->getMessage()]
+            );
         }
-
-        // Serve the file securely
-        $filePath = storage_path('app/private/' . $faceModel->image_path);
-
-        if (!file_exists($filePath)) {
-            return response()->json(['message' => 'File not found'], 404);
-        }
-
-        return response()->file($filePath);
     }
+
     /**
      * Get all face models for a specific user by user_id.
      */
     public function getByUserId(Request $request, $userId)
     {
-        $faceModels = FaceModel::where('user_id', $userId)->get();
+        try {
+            $user = $request->user();
 
-        // Check if any face models were found
-        if ($faceModels->isEmpty()) {
-            return response()->json(['message' => 'No face models found for this user'], 404);
+            if ($userId != $user->id && !$user->is_admin) {
+                Log::warning('Unauthorized attempt to view face models for another user', [
+                    'user_id' => $user->id,
+                    'target_user_id' => $userId,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'Unauthorized: You cannot view face models for other users',
+                    statusCode: 403,
+                    details: null
+                );
+            }
+
+            $faceModels = FaceModel::where('user_id', $userId)->get();
+
+            if ($faceModels->isEmpty()) {
+                Log::info('No face models found for user', [
+                    'user_id' => $user->id,
+                    'target_user_id' => $userId,
+                    'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
+                ]);
+                return $this->errorResponse(
+                    message: 'No face models found for this user',
+                    statusCode: 404,
+                    details: null
+                );
+            }
+
+            Log::info('Face models retrieved for user', [
+                'user_id' => $user->id,
+                'target_user_id' => $userId,
+                'count' => $faceModels->count(),
+                'ip' => $request->ip(),
+                'headers' => $request->headers->all(),
+            ]);
+
+            return $this->successResponse(
+                data: new FaceModelCollection($faceModels),
+                message: 'Face models retrieved successfully',
+                meta: null,
+                statusCode: 200
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve face models for user', [
+                'user_id' => $request->user()->id ?? 'unknown',
+                'target_user_id' => $userId,
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+                'headers' => $request->headers->all(),
+            ]);
+            return $this->errorResponse(
+                message: 'Failed to retrieve face models',
+                statusCode: 500,
+                details: ['exception' => $e->getMessage()]
+            );
         }
-
-        return response()->json($faceModels);
     }
-
 }
