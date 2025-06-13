@@ -62,11 +62,12 @@ Route::middleware('api.auth')->group(function () {
     Route::prefix('face-models')->group(function () {
         Route::get('/', [FaceModelController::class, 'index'])->name('face-models.index');
         Route::post('/', [FaceModelController::class, 'store'])->name('face-models.store');
-        Route::get('active', [FaceModelController::class, 'getActive'])->name('face-models.active');
-        Route::get('{id}', [FaceModelController::class, 'show'])->name('face-models.show');
+        Route::get('active', [FaceModelController::class, 'getActive'])->name('face-models.active')->middleware('throttle:60,1');
+        Route::get('{id}', [FaceModelController::class, 'show'])->name('face-models.show')->middleware('throttle:60,1');
         Route::put('{id}/set-active', [FaceModelController::class, 'setActive'])->name('face-models.set-active');
         Route::delete('{id}', [FaceModelController::class, 'destroy'])->name('face-models.destroy');
         Route::get('user/{user_id}', [FaceModelController::class, 'getByUserId'])->name('face-models.by-user');
+        Route::get('verify', [FaceModelController::class, 'getActive'])->name('face-models.verify')->middleware('throttle:60,1');
     });
 
     // Performance
