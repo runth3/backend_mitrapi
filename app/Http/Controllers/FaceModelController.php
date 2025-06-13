@@ -89,10 +89,18 @@ class FaceModelController extends Controller
             $fileName = time() . '.' . $request->file('image')->getClientOriginalExtension();
             $filePath = $request->file('image')->storeAs($folderPath, $fileName, 'local');
 
+            // Auto-activate if user uploads their own face model, otherwise keep inactive
+            $autoActivate = $targetUser->id === $authenticatedUser->id;
+            
+            if ($autoActivate) {
+                // Deactivate all existing face models for this user
+                FaceModel::where('user_id', $targetUser->id)->update(['is_active' => false]);
+            }
+            
             $faceModel = FaceModel::create([
                 'user_id' => $targetUser->id,
                 'image_path' => $filePath,
-                'is_active' => false,
+                'is_active' => $autoActivate,
             ]);
 
             Log::info('Face model created', [
@@ -212,16 +220,26 @@ class FaceModelController extends Controller
     {
         try {
             $user = $request->user();
-            $faceModel = FaceModel::where('user_id', $user->id)
+            $userId = $request->query('user_id', $user->id);
+            
+            // Check permission if requesting another user's model
+            if ($userId != $user->id && !$user->is_admin) {
+                return $this->errorResponse(
+                    message: 'Unauthorized: Cannot access other users\' face models',
+                    statusCode: 403,
+                    details: null
+                );
+            }
+            
+            $faceModel = FaceModel::where('user_id', $userId)
                 ->where('is_active', true)
                 ->latest('updated_at')
                 ->first();
 
             if (!$faceModel) {
                 Log::info('No active face model found', [
-                    'user_id' => $user->id,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
+                    'user_id' => $userId,
+                    'requester_id' => $user->id,
                 ]);
                 return $this->errorResponse(
                     message: 'No active face model found',
@@ -231,10 +249,9 @@ class FaceModelController extends Controller
             }
 
             Log::info('Active face model retrieved', [
-                'user_id' => $user->id,
+                'user_id' => $userId,
                 'face_model_id' => $faceModel->id,
-                'ip' => $request->ip(),
-                'headers' => $request->headers->all(),
+                'requester_id' => $user->id,
             ]);
 
             return $this->successResponse(
@@ -245,10 +262,8 @@ class FaceModelController extends Controller
             );
         } catch (\Exception $e) {
             Log::error('Failed to retrieve active face model', [
-                'user_id' => $request->user()->id ?? 'unknown',
-                'ip' => $request->ip(),
+                'user_id' => $request->query('user_id', $request->user()->id ?? 'unknown'),
                 'error' => $e->getMessage(),
-                'headers' => $request->headers->all(),
             ]);
             return $this->errorResponse(
                 message: 'Failed to retrieve active face model',

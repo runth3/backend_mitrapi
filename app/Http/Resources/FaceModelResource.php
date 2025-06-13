@@ -38,10 +38,25 @@ class FaceModelResource extends JsonResource
             return null;
         }
 
-        // Generate a temporary signed URL for the private file
-        return Storage::disk('local')->temporaryUrl(
-            $this->image_path,
-            now()->addMinutes(60) // URL valid for 60 minutes
-        );
+        try {
+            // Generate a temporary signed URL for the private file
+            // Cache the URL to avoid regenerating it for every request
+            return cache()->remember(
+                'face_model_url_' . $this->id, 
+                now()->addMinutes(55), // Cache for 55 minutes (URL valid for 60)
+                function() {
+                    return Storage::disk('local')->temporaryUrl(
+                        $this->image_path,
+                        now()->addMinutes(60) // URL valid for 60 minutes
+                    );
+                }
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to generate image URL', [
+                'face_model_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
     }
 }
