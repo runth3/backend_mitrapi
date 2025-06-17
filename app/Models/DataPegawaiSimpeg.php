@@ -22,13 +22,14 @@ class DataPegawaiSimpeg extends Model
         'jenis_kelamin',
         'id_pangkat',
         'id_instansi',
-        'id_unit_kerja',
+        'id_unit_kerja', 
         'id_sub_unit_kerja',
         'id_jabatan',
         'tmt_jabatan',
         'id_eselon',
         'alamat',
         'no_telp',
+        'id_jenis_kepeg',
     ];
 
     protected $hidden = [
@@ -38,7 +39,6 @@ class DataPegawaiSimpeg extends Model
         'id_status_kepeg',
         'tmt_pns',
         'tmt_cpns',
-        'id_jenis_kepeg',
         'tgl_reg_data',
         'id_kedudukan_kepeg',
         'tmt_pangkat',
