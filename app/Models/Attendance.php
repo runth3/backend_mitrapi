@@ -18,6 +18,8 @@ class Attendance extends Model
     protected $table = 'vd_data_checkinout'; // Replace with the actual table name
     protected $primaryKey = 'id_checkinout'; // Assuming 'id_checkinout' is the primary key
     public $incrementing = false; // Set to true if the primary key is auto-incrementing
+    public $timestamps = false;
+
     /**
      * The attributes that are mass assignable.
      *
