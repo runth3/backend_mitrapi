@@ -32,6 +32,7 @@ trait ApiResponseTrait
             'data' => null,
             'error' => [
                 'code' => $statusCode,
+                'error_code' => $this->getErrorCode($message, $statusCode),
                 'message' => $message,
                 'details' => $details,
             ],
@@ -45,5 +46,34 @@ trait ApiResponseTrait
         }
 
         return response()->json($response, $statusCode);
+    }
+
+    protected function getErrorCode($message, $statusCode)
+    {
+        $errorCodes = [
+            'User not authenticated' => 'UNAUTHENTICATED',
+            'Invalid credentials' => 'INVALID_CREDENTIALS',
+            'Token expired' => 'TOKEN_EXPIRED',
+            'Invalid input' => 'VALIDATION_ERROR',
+            'User data not found' => 'USER_DATA_NOT_FOUND',
+            'Already checked in' => 'DUPLICATE_CHECKIN',
+            'Unauthorized' => 'UNAUTHORIZED_ACCESS',
+        ];
+
+        foreach ($errorCodes as $messagePattern => $code) {
+            if (stripos($message, $messagePattern) !== false) {
+                return $code;
+            }
+        }
+
+        return match($statusCode) {
+            400 => 'BAD_REQUEST',
+            401 => 'UNAUTHORIZED',
+            403 => 'FORBIDDEN',
+            404 => 'NOT_FOUND',
+            422 => 'UNPROCESSABLE_ENTITY',
+            500 => 'INTERNAL_SERVER_ERROR',
+            default => 'UNKNOWN_ERROR'
+        };
     }
 }

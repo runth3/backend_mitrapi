@@ -14,11 +14,11 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes (no authentication)
 Route::prefix('auth')->group(function () {
-    Route::post('login', [AuthController::class, 'login'])->name('login');
-    Route::post('login-with-data', [AuthController::class, 'loginWithData']);
+    Route::post('login', [AuthController::class, 'login'])->name('login')->middleware('throttle:5,1');
+    Route::post('login-with-data', [AuthController::class, 'loginWithData'])->middleware('throttle:5,1');
     Route::post('refresh-with-data', [AuthController::class, 'refreshWithData']);
     Route::post('refresh-token', [AuthController::class, 'refresh'])->name('refresh-token');
-    Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token'); // Pindah ke publik
+    Route::get('validate-token', [AuthController::class, 'validateToken'])->name('validate-token');
 });
 
 // Public routes
