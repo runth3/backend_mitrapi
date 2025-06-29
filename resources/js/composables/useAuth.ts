@@ -7,18 +7,33 @@ export function useAuth() {
     const error = ref<string | null>(null);
     const isAdmin = ref(false);
 
+    function generateDeviceId(): string {
+        return 'web_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+
+    function getOrCreateDeviceId(): string {
+        let deviceId = localStorage.getItem('device_id');
+        if (!deviceId) {
+            deviceId = generateDeviceId();
+            localStorage.setItem('device_id', deviceId);
+        }
+        return deviceId;
+    }
+
     async function login(username: string, password: string) {
         loading.value = true;
         error.value = null;
         try {
+            const deviceId = getOrCreateDeviceId();
             console.log("Attempting to login with username:", username);
             const response = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Accept: "application/json",
+                    "X-Device-ID": deviceId,
                 },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username, password, device_id: deviceId }),
             });
 
             if (!response.ok) {
@@ -59,6 +74,7 @@ export function useAuth() {
     async function logout() {
         try {
             const token = localStorage.getItem("auth_token");
+            const deviceId = getOrCreateDeviceId();
             if (token) {
                 await fetch("/api/auth/logout", {
                     method: "POST",
@@ -66,6 +82,7 @@ export function useAuth() {
                         "Content-Type": "application/json",
                         Accept: "application/json",
                         Authorization: `Bearer ${token}`,
+                        "X-Device-ID": deviceId,
                     },
                 });
             }
