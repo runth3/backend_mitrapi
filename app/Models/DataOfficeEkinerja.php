@@ -38,19 +38,5 @@ class DataOfficeEkinerja extends Model
         return $this->hasMany(UserEkinerja::class, 'opd_id', 'id');
     }
     */
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (app()->environment('testing')) {
-                $model->setConnection('sqlite');
-            }
-        });
-        static::updating(function ($model) {
-            if (app()->environment('testing')) {
-                $model->setConnection('sqlite');
-            }
-        });
-    }
+ 
 }

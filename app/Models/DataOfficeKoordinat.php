@@ -46,14 +46,4 @@ class DataOfficeKoordinat extends Model
     // Catatan: Relasi instansi dipertahankan karena diperlukan untuk mengaitkan koordinat dengan kantor
     // Jika ada relasi lain yang dihilangkan (misalnya ke tabel lain), konfirmasi kebutuhannya
 
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (app()->environment('testing')) {
-                $model->setConnection('sqlite');
-                $model->setTable('absen_vd_ref_instansi_koordinat');
-            }
-        });
-    }
 }

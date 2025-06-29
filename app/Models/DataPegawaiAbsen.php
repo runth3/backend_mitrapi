@@ -81,14 +81,5 @@ class DataPegawaiAbsen extends Model
     // Catatan: Relasi officeAbsen diperlukan untuk ProfileController
     // Jika ada relasi lain yang dihilangkan (misalnya ke unit kerja atau jabatan), konfirmasi kebutuhannya
 
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (app()->environment('testing')) {
-                $model->setConnection('sqlite');
-                $model->setTable('simpeg_vd_data_identitas_pegawai');
-            }
-        });
-    }
+    
 }

@@ -49,19 +49,5 @@ class DataOfficeAbsen extends Model
         return $this->hasMany(UserAbsen::class, 'id_instansi', 'id_instansi');
     }
     */
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (app()->environment('testing')) {
-                $model->setConnection('sqlite');
-            }
-        });
-        static::updating(function ($model) {
-            if (app()->environment('testing')) {
-                $model->setConnection('sqlite');
-            }
-        });
-    }
+ 
 }

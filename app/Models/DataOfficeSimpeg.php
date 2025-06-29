@@ -45,15 +45,5 @@ class DataOfficeSimpeg extends Model
         return $this->hasMany(DataPegawaiSimpeg::class, 'id_instansi', 'id_instansi');
     }
     */
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (app()->environment('testing')) {
-                $model->setConnection('sqlite');
-                $model->setTable('simpeg_vd_ref_instansi');
-            }
-        });
-    }
+ 
 }

@@ -27,6 +27,11 @@ Route::prefix('news')->group(function () {
     Route::get('{id}', [NewsController::class, 'show'])->name('news.show');
 });
 
+// Version check route
+Route::get('version/check', [\App\Http\Controllers\VersionController::class, 'checkVersion'])
+    ->middleware('api.auth')
+    ->name('version.check');
+
 // Authenticated routes
 Route::middleware('api.auth')->group(function () {
     // Auth routes
