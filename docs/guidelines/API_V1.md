@@ -311,7 +311,93 @@
 
 ---
 
-## 10. VersionController
+## 10. ApplicationLetterController
+
+### GET /application-letters/check-approval
+**Description**: Check if there's an approved application letter for a specific date and employee.
+**Authentication**: Required (api.auth)
+**Query Parameters**: 
+- `date` (required): Date to check (YYYY-MM-DD format)
+- `nip_pegawai` (optional): Employee NIP (defaults to authenticated user's username)
+
+**Example Request**: `GET /api/application-letters/check-approval?date=2025-01-15&nip_pegawai=199703062020122015`
+
+**Response (Has Approval)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "date": "2025-01-15",
+    "nip_pegawai": "199703062020122015",
+    "has_approval": true,
+    "application_info": {
+      "id": "APP001",
+      "jenis_permohonan": "01",
+      "start_date": "2025-01-15",
+      "end_date": "2025-01-15",
+      "description": "Sick leave",
+      "approved_by": "admin",
+      "approved_on": "2025-01-10 10:30:00"
+    }
+  },
+  "message": "Application letter found for this date"
+}
+```
+
+**Response (No Approval)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "date": "2025-01-15",
+    "nip_pegawai": "199703062020122015",
+    "has_approval": false,
+    "application_info": null
+  },
+  "message": "No approved application letter found for this date"
+}
+```
+
+### GET /application-letters/current-month
+**Description**: Get all application letters for the current month by employee NIP.
+**Authentication**: Required (api.auth)
+**Query Parameters**: 
+- `nip_pegawai` (optional): Employee NIP (defaults to authenticated user's username)
+
+**Example Request**: `GET /api/application-letters/current-month?nip_pegawai=199703062020122015`
+
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "month": "2025-01",
+    "nip_pegawai": "199703062020122015",
+    "applications": [
+      {
+        "id": "APP001",
+        "jenis_permohonan": "01",
+        "start_date": "2025-01-15",
+        "end_date": "2025-01-15",
+        "description": "Sick leave",
+        "status": 2,
+        "status_text": "Approved",
+        "created_on": "2025-01-10 09:00:00",
+        "approved_by": "admin",
+        "approved_on": "2025-01-10 10:30:00",
+        "rejected_by": null,
+        "rejected_on": null,
+        "reason": null
+      }
+    ]
+  },
+  "message": "Application letters retrieved successfully"
+}
+```
+
+---
+
+## 11. VersionController
 
 ### GET /version/check
 **Description**: Check application version.

@@ -69,6 +69,12 @@ Route::middleware('api.auth')->group(function () {
         Route::get('incidental-days', [\App\Http\Controllers\CalendarController::class, 'getIncidentalDays'])->name('calendar.incidental-days');
     });
 
+    // Application Letter routes
+    Route::prefix('application-letters')->group(function () {
+        Route::get('check-approval', [\App\Http\Controllers\ApplicationLetterController::class, 'checkApproval'])->name('application-letters.check-approval');
+        Route::get('current-month', [\App\Http\Controllers\ApplicationLetterController::class, 'listCurrentMonth'])->name('application-letters.current-month');
+    });
+
     // Face Models
     Route::prefix('face-models')->group(function () {
         Route::get('/', [FaceModelController::class, 'index'])->name('face-models.index');
