@@ -39,6 +39,7 @@ class PerformanceResource extends JsonResource
             'durasiKinerja' => $this->durasiKinerja,
             'menitKinerja' => $this->menitKinerja,
             'apv' => $this->apv,
+            'apvId' => $this->apvId,
             'tupoksi' => $this->tupoksi,
             'periodeKinerja' => $this->periodeKinerja,
             'target' => $this->target,

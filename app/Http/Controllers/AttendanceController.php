@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\AttendanceResource;
 use App\Models\Attendance;
 use App\Models\DataPegawaiAbsen;
+use App\Models\DataSelfie;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -468,6 +469,77 @@ public function uploadPhoto(Request $request)
             );
         } catch (\Exception $e) {
             Log::error('Failed to upload photo', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to upload photo', 500, $e->getMessage());
+        }
+    }
+
+    public function uploadPhotoPublic(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $validator = Validator::make($request->all(), [
+                'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'checktype' => 'required|in:I,O',
+                'jenis_absensi' => 'required|integer|in:1,2,3'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
+
+            $currentDateTime = Carbon::now('Asia/Makassar');
+            $dateFolder = $currentDateTime->format('Y/m/d');
+            $timestamp = $currentDateTime->format('YmdHis');
+            $fileExtension = $request->file('photo')->getClientOriginalExtension();
+            $fileName = "{$user->username}_{$timestamp}.{$fileExtension}";
+            $publicPath = "attendance/{$dateFolder}/{$fileName}";
+
+            $request->file('photo')->storeAs("public/attendance/{$dateFolder}", $fileName);
+            $publicUrl = asset("storage/attendance/{$dateFolder}/{$fileName}");
+
+            // Generate unique ID for selfie record
+            $idDataSelfie = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 13));
+
+            // Save to vd_data_selfie table
+            DataSelfie::create([
+                'id_data_selfie' => $idDataSelfie,
+                'nip' => $user->username,
+                'nama_file' => $fileName,
+                'tgl_selfie' => $currentDateTime,
+                'checktype' => $request->checktype,
+                'jenis_absensi' => $request->jenis_absensi
+            ]);
+
+            Log::info('Public photo uploaded and metadata saved', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'file_path' => $publicPath,
+                'public_url' => $publicUrl,
+                'id_data_selfie' => $idDataSelfie
+            ]);
+
+            return $this->successResponse(
+                data: [
+                    'id_data_selfie' => $idDataSelfie,
+                    'file_path' => $publicPath,
+                    'public_url' => $publicUrl,
+                    'nama_file' => $fileName
+                ],
+                message: 'Photo uploaded and metadata saved successfully',
+                meta: null,
+                statusCode: 201
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to upload public photo', [
                 'user_id' => $user->id ?? 'unknown',
                 'ip' => $request->ip(),
                 'error' => $e->getMessage(),

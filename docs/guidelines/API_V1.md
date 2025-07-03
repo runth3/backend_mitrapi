@@ -111,28 +111,216 @@
 ## 5. AttendanceController
 
 ### GET /attendances/me
-**Description**: Get authenticated user's attendance records.
+**Description**: Get authenticated user's monthly attendance records with pagination.
 **Authentication**: Required (api.auth)
+**Query Parameters**: 
+- `per_page` (optional): Items per page (default: 20)
+
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "month": "2025-01",
+    "attendances": [
+      {
+        "id": 1,
+        "id_checkinout": "ABC123DEF456",
+        "nip_pegawai": "199703062020122015",
+        "date": "2025-01-15",
+        "checktime": "2025-01-15 08:30:00",
+        "checktype": "auto",
+        "jenis_absensi": "masuk",
+        "coordinate": "-6.200000,106.816666",
+        "altitude": 25.5,
+        "aprv_stats": "Y"
+      }
+    ]
+  },
+  "meta": {
+    "current_page": 1,
+    "per_page": 20,
+    "total": 25,
+    "last_page": 2
+  },
+  "message": "Monthly attendance retrieved successfully"
+}
+```
 
 ### POST /attendances/check-in
-**Description**: Check in attendance.
+**Description**: Check in attendance for current date and time.
 **Authentication**: Required (api.auth)
+**Request Body**:
+```json
+{
+  "coordinate": "-6.200000,106.816666",
+  "altitude": 25.5,
+  "checktype": "auto",
+  "jenis_absensi": "masuk"
+}
+```
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "id_checkinout": "ABC123DEF456",
+    "nip_pegawai": "199703062020122015",
+    "date": "2025-01-15",
+    "checktime": "2025-01-15 08:30:00",
+    "checktype": "auto",
+    "jenis_absensi": "masuk",
+    "coordinate": "-6.200000,106.816666",
+    "altitude": 25.5,
+    "aprv_stats": "Y"
+  },
+  "message": "Check-in successful"
+}
+```
 
 ### POST /attendances/manual-check-in
-**Description**: Submit manual check-in request.
+**Description**: Submit manual check-in request for past date (requires approval).
 **Authentication**: Required (api.auth)
+**Request Body**:
+```json
+{
+  "date": "2025-01-14",
+  "checktime": "2025-01-14 08:30:00",
+  "coordinate": "-6.200000,106.816666",
+  "altitude": 25.5,
+  "checktype": "manual",
+  "jenis_absensi": "masuk"
+}
+```
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 2,
+    "id_checkinout": "XYZ789ABC123",
+    "nip_pegawai": "199703062020122015",
+    "date": "2025-01-14",
+    "checktime": "2025-01-14 08:30:00",
+    "checktype": "manual",
+    "jenis_absensi": "masuk",
+    "coordinate": "-6.200000,106.816666",
+    "altitude": 25.5,
+    "aprv_stats": "N"
+  },
+  "message": "Manual check-in successful"
+}
+```
 
 ### GET /attendances/manual
-**Description**: List manual attendance requests.
+**Description**: List manual attendance requests by approval status.
 **Authentication**: Required (api.auth)
+**Query Parameters**: 
+- `status` (required): Approval status (Y=approved, N=pending)
+- `per_page` (optional): Items per page (default: 20)
+
+**Example Request**: `GET /api/attendances/manual?status=N&per_page=10`
+
+**Response**:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 2,
+      "id_checkinout": "XYZ789ABC123",
+      "nip_pegawai": "199703062020122015",
+      "date": "2025-01-14",
+      "checktime": "2025-01-14 08:30:00",
+      "checktype": "manual",
+      "jenis_absensi": "masuk",
+      "aprv_stats": "N"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "per_page": 10,
+    "total": 5,
+    "last_page": 1
+  },
+  "message": "Manual attendance list retrieved"
+}
+```
 
 ### POST /attendances/{id}/approve-or-reject
-**Description**: Approve or reject attendance request.
+**Description**: Approve or reject manual attendance request.
 **Authentication**: Required (api.auth)
+**Request Body**:
+```json
+{
+  "status": "Y"
+}
+```
+**Response (Approved)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 2,
+    "id_checkinout": "XYZ789ABC123",
+    "nip_pegawai": "199703062020122015",
+    "date": "2025-01-14",
+    "checktime": "2025-01-14 08:30:00",
+    "checktype": "manual",
+    "aprv_stats": "Y",
+    "aprv_by": "admin",
+    "aprv_on": "2025-01-15 10:30:00"
+  },
+  "message": "Manual attendance approved successfully"
+}
+```
 
 ### POST /attendances/upload-photo
-**Description**: Upload attendance photo.
+**Description**: Upload attendance photo to private storage.
 **Authentication**: Required (api.auth)
+**Request Body**: 
+```json
+{
+  "photo": "file (required: image, max 2MB)",
+  "checktype": "string (required: auto|manual)"
+}
+```
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "file_path": "absen/2025-01-15/199703062020122015-A-1737000000.jpg"
+  },
+  "message": "Photo uploaded successfully"
+}
+```
+
+### POST /attendances/upload-photo-public
+**Description**: Upload attendance photo to public storage and save metadata to vd_data_selfie table.
+**Authentication**: Required (api.auth)
+**Request Body**: 
+```json
+{
+  "photo": "file (required: image, max 2MB)",
+  "checktype": "string (required: I=In, O=Out)",
+  "jenis_absensi": "integer (required: 1=Dalam Kantor, 2=Luar Kantor, 3=Insidental)"
+}
+```
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id_data_selfie": "5A0OHEHVIA8S8",
+    "file_path": "attendance/2025/01/15/199703062020122015_20250115102638.jpg",
+    "public_url": "https://example.com/storage/attendance/2025/01/15/199703062020122015_20250115102638.jpg",
+    "nama_file": "199703062020122015_20250115102638.jpg"
+  },
+  "message": "Photo uploaded and metadata saved successfully"
+}
+```
 
 ### GET /attendances (Admin)
 **Description**: Get all attendance records (admin only).
@@ -155,32 +343,233 @@
 ## 6. PerformanceController
 
 ### GET /performances
-**Description**: Get all performance records for authenticated user.
+**Description**: Get all performance records for authenticated user (excluding soft-deleted records).
 **Authentication**: Required (api.auth)
-
-### GET /performances/me
-**Description**: Get authenticated user's performance records.
-**Authentication**: Required (api.auth)
+**Response**:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "nama": "Laporan Bulanan",
+      "penjelasan": "Membuat laporan kinerja bulanan",
+      "tglKinerja": "2025-01-15",
+      "durasiKinerjaMulai": "08:00:00",
+      "durasiKinerjaSelesai": "10:00:00",
+      "durasiKinerja": "02:00",
+      "menitKinerja": 120,
+      "apv": "P",
+      "apvId": "USR001",
+      "tupoksi": "Administrasi",
+      "periodeKinerja": "January 2025",
+      "target": 1,
+      "satuanTarget": "laporan",
+      "NIP": "199703062020122015",
+      "stsDel": 0
+    }
+  ],
+  "message": "Performance records retrieved successfully"
+}
+```
 
 ### POST /performances/filter
-**Description**: Filter performance records by approval status.
+**Description**: Filter performance records by month, year, approval status, and optionally NIP.
 **Authentication**: Required (api.auth)
+**Request Body**: 
+```json
+{
+  "month": 1,
+  "year": 2025,
+  "apv": "P",
+  "NIP": "199703062020122015"
+}
+```
+**Response**:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "nama": "Laporan Bulanan",
+      "penjelasan": "Membuat laporan kinerja bulanan",
+      "tglKinerja": "2025-01-15",
+      "durasiKinerjaMulai": "08:00:00",
+      "durasiKinerjaSelesai": "10:00:00",
+      "durasiKinerja": "02:00",
+      "menitKinerja": 120,
+      "apv": "P",
+      "apvId": "USR001",
+      "tupoksi": "Administrasi",
+      "periodeKinerja": "January 2025",
+      "target": 1,
+      "satuanTarget": "laporan",
+      "NIP": "199703062020122015",
+      "stsDel": 0
+    }
+  ],
+  "message": "Filtered performance records retrieved successfully"
+}
+```
 
 ### POST /performances
-**Description**: Create new performance record.
+**Description**: Create new performance record with default approval status 'P' (Pending).
 **Authentication**: Required (api.auth)
+**Request Body**:
+```json
+{
+  "nama": "Laporan Bulanan",
+  "penjelasan": "Membuat laporan kinerja bulanan",
+  "tglKinerja": "2025-01-15",
+  "durasiKinerjaMulai": "08:00:00",
+  "durasiKinerjaSelesai": "10:00:00",
+  "tupoksi": "Administrasi",
+  "target": 1,
+  "satuanTarget": "laporan"
+}
+```
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "nama": "Laporan Bulanan",
+    "penjelasan": "Membuat laporan kinerja bulanan",
+    "tglKinerja": "2025-01-15",
+    "durasiKinerjaMulai": "08:00:00",
+    "durasiKinerjaSelesai": "10:00:00",
+    "durasiKinerja": "02:00",
+    "menitKinerja": 120,
+    "apv": "P",
+    "tupoksi": "Administrasi",
+    "periodeKinerja": "January 2025",
+    "target": 1,
+    "satuanTarget": "laporan",
+    "NIP": "199703062020122015",
+    "stsDel": 0,
+    "created_at": "2025-01-15T08:30:00.000000Z",
+    "updated_at": "2025-01-15T08:30:00.000000Z"
+  },
+  "message": "Performance record created successfully"
+}
+```
 
 ### GET /performances/{id}
-**Description**: Get specific performance record.
+**Description**: Get specific performance record by ID.
 **Authentication**: Required (api.auth)
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "nama": "Laporan Bulanan",
+    "penjelasan": "Membuat laporan kinerja bulanan",
+    "tglKinerja": "2025-01-15",
+    "durasiKinerjaMulai": "08:00:00",
+    "durasiKinerjaSelesai": "10:00:00",
+    "durasiKinerja": "02:00",
+    "menitKinerja": 120,
+    "apv": "P",
+    "apvId": "USR001",
+    "tupoksi": "Administrasi",
+    "periodeKinerja": "January 2025",
+    "target": 1,
+    "satuanTarget": "laporan",
+    "NIP": "199703062020122015",
+    "stsDel": 0,
+    "created_at": "2025-01-15T08:30:00.000000Z",
+    "updated_at": "2025-01-15T08:30:00.000000Z"
+  },
+  "message": "Performance record retrieved successfully"
+}
+```
 
 ### PUT /performances/{id}
-**Description**: Update performance record.
+**Description**: Update performance record (restricted if approval status is 'A' or 'R').
 **Authentication**: Required (api.auth)
+**Request Body**:
+```json
+{
+  "nama": "Laporan Bulanan Updated",
+  "penjelasan": "Membuat dan merevisi laporan kinerja bulanan",
+  "target": 2
+}
+```
+**Response (Success)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "nama": "Laporan Bulanan Updated",
+    "penjelasan": "Membuat dan merevisi laporan kinerja bulanan",
+    "tglKinerja": "2025-01-15",
+    "durasiKinerjaMulai": "08:00:00",
+    "durasiKinerjaSelesai": "10:00:00",
+    "durasiKinerja": "02:00",
+    "menitKinerja": 120,
+    "apv": "P",
+    "apvId": "USR001",
+    "tupoksi": "Administrasi",
+    "periodeKinerja": "January 2025",
+    "target": 2,
+    "satuanTarget": "laporan",
+    "NIP": "199703062020122015",
+    "stsDel": 0,
+    "updated_at": "2025-01-15T09:30:00.000000Z"
+  },
+  "message": "Performance record updated successfully"
+}
+```
+**Response (Restricted)**:
+```json
+{
+  "status": "error",
+  "error": {
+    "code": 400,
+    "message": "Cannot update performance record with approved or rejected status",
+    "details": {}
+  },
+  "message": "Update not allowed"
+}
+```
 
 ### DELETE /performances/{id}
-**Description**: Delete performance record (soft delete).
+**Description**: Soft delete performance record by setting stsDel = 1.
 **Authentication**: Required (api.auth)
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 1,
+    "nama": "Laporan Bulanan",
+    "stsDel": 1,
+    "deleted_at": "2025-01-15T10:30:00.000000Z"
+  },
+  "message": "Performance record deleted successfully"
+}
+```
+
+**Performance Fields**:
+- `nama`: Performance task name
+- `penjelasan`: Task description  
+- `tglKinerja`: Performance date
+- `durasiKinerjaMulai`: Start time
+- `durasiKinerjaSelesai`: End time
+- `durasiKinerja`: Auto-calculated duration (HH:MM format)
+- `menitKinerja`: Auto-calculated duration in minutes
+- `apv`: Approval status (P=Pending, A=Approved, R=Rejected)
+- `apvId`: Approver ID (auto-filled from UserEkinerja during creation)
+- `tupoksi`: Task responsibility
+- `periodeKinerja`: Auto-generated performance period
+- `target`: Target value
+- `satuanTarget`: Target unit
+- `NIP`: User identifier (auto-filled)
+- `stsDel`: Soft delete flag (0=active, 1=deleted)
 
 ---
 
@@ -332,7 +721,7 @@
     "has_approval": true,
     "application_info": {
       "id": "APP001",
-      "jenis_permohonan": "01",
+      "jenis_permohonan": "TL",
       "start_date": "2025-01-15",
       "end_date": "2025-01-15",
       "description": "Sick leave",

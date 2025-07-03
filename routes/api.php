@@ -61,6 +61,7 @@ Route::middleware('api.auth')->group(function () {
         Route::post('{id}/approve-or-reject', [AttendanceController::class, 'approveOrReject'])->name('attendances.approve-or-reject');
         Route::get('manual', [AttendanceController::class, 'listManualAttendance'])->name('attendances.manual-list');
         Route::post('upload-photo', [AttendanceController::class, 'uploadPhoto'])->name('attendances.upload-photo');
+        Route::post('upload-photo-public', [AttendanceController::class, 'uploadPhotoPublic'])->name('attendances.upload-photo-public');
     });
 
     // Calendar routes

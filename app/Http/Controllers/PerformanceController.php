@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\PerformanceResource;
 use App\Models\Attendance;
 use App\Models\Performance;
+use App\Models\UserEkinerja;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -143,6 +144,10 @@ class PerformanceController extends Controller
             $durationInMinutes = $end->diffInMinutes($start);
             $durationString = $end->diff($start)->format('%H:%I');
 
+            // Get apvId from UserEkinerja
+            $userEkinerja = UserEkinerja::where('NIP', $user->username)->first();
+            $apvId = $userEkinerja?->apvId;
+
             $performance = Performance::create([
                 'nama' => $request->nama,
                 'penjelasan' => $request->penjelasan,
@@ -152,6 +157,7 @@ class PerformanceController extends Controller
                 'durasiKinerja' => $durationString,
                 'menitKinerja' => $durationInMinutes,
                 'apv' => 'P',
+                'apvId' => $apvId,
                 'tupoksi' => $request->tupoksi,
                 'periodeKinerja' => $request->periodeKinerja,
                 'target' => $request->target,

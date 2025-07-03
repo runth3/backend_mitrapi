@@ -49,15 +49,5 @@ class UserEkinerja extends Model
 
     // Catatan: Relasi officeEkinerja diperlukan untuk ProfileController (opsional)
     // Jika ada relasi lain yang dihilangkan, konfirmasi kebutuhannya
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (app()->environment('testing')) {
-                $model->setConnection('sqlite');
-                $model->setTable('ekin_kinerja_user');
-            }
-        });
-    }
+ 
 }
