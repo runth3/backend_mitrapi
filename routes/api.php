@@ -63,6 +63,12 @@ Route::middleware('api.auth')->group(function () {
         Route::post('upload-photo', [AttendanceController::class, 'uploadPhoto'])->name('attendances.upload-photo');
     });
 
+    // Calendar routes
+    Route::prefix('calendar')->group(function () {
+        Route::get('holidays', [\App\Http\Controllers\CalendarController::class, 'getHolidays'])->name('calendar.holidays');
+        Route::get('incidental-days', [\App\Http\Controllers\CalendarController::class, 'getIncidentalDays'])->name('calendar.incidental-days');
+    });
+
     // Face Models
     Route::prefix('face-models')->group(function () {
         Route::get('/', [FaceModelController::class, 'index'])->name('face-models.index');

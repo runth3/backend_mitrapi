@@ -403,78 +403,78 @@ class AttendanceController extends Controller
                 'user_agent' => $request->userAgent(),
                 'status' => $request->status,
                 $perPage,
-],
-statusCode: 200
-);
-} catch (\Exception $e) {
-Log::error('Failed to retrieve manual attendance list', [
-'user_id' => $user->id ?? 'unknown',
-'ip' => $request->ip(),
-'error' => $e->getMessage(),
-]);
-return $this->errorResponse('Failed to retrieve manual attendance list', 500, $e->getMessage());
-}
-}
+        ],
+        statusCode: 200
+        );
+        } catch (\Exception $e) {
+        Log::error('Failed to retrieve manual attendance list', [
+        'user_id' => $user->id ?? 'unknown',
+        'ip' => $request->ip(),
+        'error' => $e->getMessage(),
+        ]);
+        return $this->errorResponse('Failed to retrieve manual attendance list', 500, $e->getMessage());
+        }
+    }
 
 public function uploadPhoto(Request $request)
-{
-    $user = auth()->user();
-    if (!$user) {
-        Log::info('Photo upload failed: User not authenticated', [
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-        return $this->errorResponse('User not authenticated', 401);
-    }
-
-    try {
-        $validator = Validator::make($request->all(), [
-            'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-            'checktype' => 'required|in:auto,manual',
-        ]);
-
-        if ($validator->fails()) {
-            Log::info('Photo upload failed: Validation error', [
-                'user_id' => $user->id,
+    {
+        $user = auth()->user();
+        if (!$user) {
+            Log::info('Photo upload failed: User not authenticated', [
                 'ip' => $request->ip(),
-                'errors' => $validator->errors()->toArray(),
+                'user_agent' => $request->userAgent(),
             ]);
-            return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            return $this->errorResponse('User not authenticated', 401);
         }
 
-        $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d');
-        $timestamp = Carbon::now('Asia/Makassar')->timestamp;
-        $nip = $user->username;
-        $checkTypeCode = $request->checktype === 'manual' ? 'M' : 'A';
+        try {
+            $validator = Validator::make($request->all(), [
+                'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'checktype' => 'required|in:auto,manual',
+            ]);
 
-        $fileExtension = $request->file('photo')->getClientOriginalExtension();
-        $fileName = "{$nip}-{$checkTypeCode}-{$timestamp}.{$fileExtension}";
-        $filePath = "absen/{$currentDate}/{$fileName}";
+            if ($validator->fails()) {
+                Log::info('Photo upload failed: Validation error', [
+                    'user_id' => $user->id,
+                    'ip' => $request->ip(),
+                    'errors' => $validator->errors()->toArray(),
+                ]);
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
 
-        $request->file('photo')->storeAs("private/absen/{$currentDate}", $fileName);
+            $currentDate = Carbon::now('Asia/Makassar')->format('Y-m-d');
+            $timestamp = Carbon::now('Asia/Makassar')->timestamp;
+            $nip = $user->username;
+            $checkTypeCode = $request->checktype === 'manual' ? 'M' : 'A';
 
-        Log::info('Photo uploaded successfully', [
-            'user_id' => $user->id,
-            'username' => $user->username,
-            'ip' => $request->ip(),
-            'file_path' => $filePath,
-        ]);
+            $fileExtension = $request->file('photo')->getClientOriginalExtension();
+            $fileName = "{$nip}-{$checkTypeCode}-{$timestamp}.{$fileExtension}";
+            $filePath = "absen/{$currentDate}/{$fileName}";
 
-        return $this->successResponse(
-            data: ['file_path' => $filePath],
-            message: 'Photo uploaded successfully',
-            meta: null,
-            statusCode: 201
-        );
-    } catch (\Exception $e) {
-        Log::error('Failed to upload photo', [
-            'user_id' => $user->id ?? 'unknown',
-            'ip' => $request->ip(),
-            'error' => $e->getMessage(),
-        ]);
-        return $this->errorResponse('Failed to upload photo', 500, $e->getMessage());
+            $request->file('photo')->storeAs("private/absen/{$currentDate}", $fileName);
+
+            Log::info('Photo uploaded successfully', [
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'ip' => $request->ip(),
+                'file_path' => $filePath,
+            ]);
+
+            return $this->successResponse(
+                data: ['file_path' => $filePath],
+                message: 'Photo uploaded successfully',
+                meta: null,
+                statusCode: 201
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to upload photo', [
+                'user_id' => $user->id ?? 'unknown',
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to upload photo', 500, $e->getMessage());
+        }
     }
-}
 
     /**
      * Generate a unique id_checkinout.
@@ -485,7 +485,7 @@ public function uploadPhoto(Request $request)
     private function generateIdCheckinout($checktime)
     {
         $timestamp = strtotime($checktime);
-        $encodedTime = base_convert($timestamp, 10, 36);
+        $encodedTime = strtoupper(base_convert($timestamp, 10, 36));
         $randomString = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 6);
         return $randomString . $encodedTime;
     }
