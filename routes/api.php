@@ -8,6 +8,9 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FaceModelController;
+use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\ApplicationLetterController;
+use App\Http\Controllers\VersionController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -28,7 +31,7 @@ Route::prefix('news')->group(function () {
 });
 
 // Version check route
-Route::get('version/check', [\App\Http\Controllers\VersionController::class, 'checkVersion'])
+Route::get('version/check', [VersionController::class, 'checkVersion'])
     ->middleware('api.auth')
     ->name('version.check');
 
@@ -66,14 +69,14 @@ Route::middleware('api.auth')->group(function () {
 
     // Calendar routes
     Route::prefix('calendar')->group(function () {
-        Route::get('holidays', [\App\Http\Controllers\CalendarController::class, 'getHolidays'])->name('calendar.holidays');
-        Route::get('incidental-days', [\App\Http\Controllers\CalendarController::class, 'getIncidentalDays'])->name('calendar.incidental-days');
+        Route::get('holidays', [CalendarController::class, 'getHolidays'])->name('calendar.holidays');
+        Route::get('incidental-days', [CalendarController::class, 'getIncidentalDays'])->name('calendar.incidental-days');
     });
 
     // Application Letter routes
     Route::prefix('application-letters')->group(function () {
-        Route::get('check-approval', [\App\Http\Controllers\ApplicationLetterController::class, 'checkApproval'])->name('application-letters.check-approval');
-        Route::get('current-month', [\App\Http\Controllers\ApplicationLetterController::class, 'listCurrentMonth'])->name('application-letters.current-month');
+        Route::get('check-approval', [ApplicationLetterController::class, 'checkApproval'])->name('application-letters.check-approval');
+        Route::get('current-month', [ApplicationLetterController::class, 'listCurrentMonth'])->name('application-letters.current-month');
     });
 
     // Face Models
