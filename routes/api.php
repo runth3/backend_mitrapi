@@ -95,6 +95,7 @@ Route::middleware('api.auth')->group(function () {
     Route::prefix('performances')->group(function () {
         Route::get('/', [PerformanceController::class, 'index'])->name('performances.index');
         Route::get('me', [PerformanceController::class, 'me'])->name('performances.me');
+        Route::get('by-date', [PerformanceController::class, 'getByDate'])->name('performances.by-date');
         Route::post('filter', [PerformanceController::class, 'filterByApv'])->name('performances.filter');
         Route::post('/', [PerformanceController::class, 'store'])->name('performances.store');
         Route::get('{id}', [PerformanceController::class, 'show'])->name('performances.show');

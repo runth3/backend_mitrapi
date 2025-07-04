@@ -95,14 +95,13 @@ class PerformanceController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'nama' => 'required|string|max:255',
-                'penjelasan' => 'nullable|string',
+                'penjelasan' => 'required|string',
                 'tglKinerja' => 'required|date',
-                'durasiKinerjaMulai' => 'required|date_format:H:i',
-                'durasiKinerjaSelesai' => 'required|date_format:H:i|after:durasiKinerjaMulai',
-                'tupoksi' => 'nullable|string',
-                'periodeKinerja' => 'nullable|string',
-                'target' => 'nullable|integer',
-                'satuanTarget' => 'nullable|string',  
+                'durasiKinerjaMulai' => 'required|date_format:H:i:s',
+                'durasiKinerjaSelesai' => 'required|date_format:H:i:s|after:durasiKinerjaMulai',
+                'tupoksi' => 'required|integer|in:0,1',
+                'target' => 'required|integer|min:0',
+                'satuanTarget' => 'required|string|max:50',
             ]);
 
             if ($validator->fails()) {
@@ -139,8 +138,8 @@ class PerformanceController extends Controller
                 return $this->errorResponse('tglKinerja must match an attendance record', 422);
             }
 
-            $start = Carbon::createFromFormat('H:i', $request->durasiKinerjaMulai);
-            $end = Carbon::createFromFormat('H:i', $request->durasiKinerjaSelesai);
+            $start = Carbon::createFromFormat('H:i:s', $request->durasiKinerjaMulai);
+            $end = Carbon::createFromFormat('H:i:s', $request->durasiKinerjaSelesai);
             $durationInMinutes = $start->diffInMinutes($end);
             $durationString = $start->diff($end)->format('%H:%I');
 
@@ -383,6 +382,10 @@ class PerformanceController extends Controller
                 return $this->errorResponse('Performance not found', 404);
             }
 
+            if ($performance->apv !== 'P') {
+                return $this->errorResponse('Can only delete pending performances', 403);
+            }
+
             $performance->update(['stsDel' => 1]);
 
             Log::info('Performance soft deleted successfully', [
@@ -471,6 +474,47 @@ class PerformanceController extends Controller
                 'error' => $e->getMessage(),
             ]);
             return $this->errorResponse('Failed to retrieve monthly performance', 500, $e->getMessage());
+        }
+    }
+
+    /**
+     * Get performances by specific date.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getByDate(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $validator = Validator::make($request->all(), [
+                'date' => 'required|date',
+                'nip_pegawai' => 'nullable|string'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
+
+            $nip = $request->nip_pegawai ?? $user->username;
+            $date = $request->date;
+
+            $performances = Performance::where('NIP', $nip)
+                ->where('stsDel', 0)
+                ->whereDate('tglKinerja', $date)
+                ->orderBy('durasiKinerjaMulai', 'asc')
+                ->get();
+
+            return $this->successResponse(
+                data: PerformanceResource::collection($performances),
+                message: 'Performances retrieved successfully'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve performances', 500, $e->getMessage());
         }
     }
 

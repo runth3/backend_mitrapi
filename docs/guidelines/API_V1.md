@@ -346,6 +346,46 @@
 **Description**: Get all performance records for authenticated user (excluding soft-deleted records).
 **Authentication**: Required (api.auth)
 **Response**:
+
+### GET /performances/by-date
+**Description**: Get performances for a specific date and user.
+**Authentication**: Required (api.auth)
+**Query Parameters**: 
+- `date` (required): Date to check (YYYY-MM-DD format)
+- `nip_pegawai` (optional): Employee NIP (defaults to authenticated user)
+
+**Example Request**: `GET /api/performances/by-date?date=2025-01-15&nip_pegawai=199703062020122015`
+
+**Response**:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "nama": "Laporan Bulanan",
+      "penjelasan": "Membuat laporan kinerja bulanan",
+      "tglKinerja": "2025-01-15",
+      "durasiKinerjaMulai": "08:00:00",
+      "durasiKinerjaSelesai": "10:00:00",
+      "durasiKinerja": "02:00",
+      "menitKinerja": 120,
+      "apv": "P",
+      "apvId": "USR001",
+      "tupoksi": 1,
+      "target": 1,
+      "satuanTarget": "laporan",
+      "NIP": "199703062020122015"
+    }
+  ],
+  "message": "Performances retrieved successfully"
+}
+```
+
+### GET /performances (All Records)
+**Description**: Get all performance records for authenticated user (excluding soft-deleted records).
+**Authentication**: Required (api.auth)
+**Response**:
 ```json
 {
   "status": "success",
