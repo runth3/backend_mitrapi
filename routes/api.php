@@ -75,8 +75,13 @@ Route::middleware('api.auth')->group(function () {
 
     // Application Letter routes
     Route::prefix('application-letters')->group(function () {
+        Route::get('/', [ApplicationLetterController::class, 'index'])->name('application-letters.index');
+        Route::post('/', [ApplicationLetterController::class, 'store'])->name('application-letters.store');
         Route::get('check-approval', [ApplicationLetterController::class, 'checkApproval'])->name('application-letters.check-approval');
         Route::get('current-month', [ApplicationLetterController::class, 'listCurrentMonth'])->name('application-letters.current-month');
+        Route::get('{id}', [ApplicationLetterController::class, 'show'])->name('application-letters.show');
+        Route::put('{id}', [ApplicationLetterController::class, 'update'])->name('application-letters.update');
+        Route::delete('{id}', [ApplicationLetterController::class, 'destroy'])->name('application-letters.destroy');
     });
 
     // Face Models

@@ -147,6 +147,11 @@ This backend is built with Laravel and provides a comprehensive employee managem
 - `GET /api/calendar/incidental-days` - Check incidental/ceremony days
 
 ## **Application Letter Services**
+- `GET /api/application-letters` - List user application letters
+- `POST /api/application-letters` - Create new application letter
+- `GET /api/application-letters/{id}` - Get specific application letter
+- `PUT /api/application-letters/{id}` - Update application letter
+- `DELETE /api/application-letters/{id}` - Delete application letter
 - `GET /api/application-letters/check-approval` - Check leave approvals
 - `GET /api/application-letters/current-month` - Monthly application summary
 

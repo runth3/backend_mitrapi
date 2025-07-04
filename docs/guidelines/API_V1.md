@@ -742,6 +742,98 @@
 
 ## 10. ApplicationLetterController
 
+### GET /application-letters
+**Description**: Get all application letters for authenticated user with pagination.
+**Authentication**: Required (api.auth)
+**Query Parameters**: 
+- `per_page` (optional): Items per page (default: 20)
+
+**Response**:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": "APP001",
+      "nip_pegawai": "199703062020122015",
+      "jenis_permohonan": "01",
+      "tgl_mulai": "2025-01-15",
+      "tgl_selesai": "2025-01-15",
+      "deskripsi": "Sick leave",
+      "alasan": "Medical appointment",
+      "status": 1,
+      "status_text": "Pending",
+      "created_by": "199703062020122015",
+      "created_on": "2025-01-10 09:00:00"
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "per_page": 20,
+    "total": 5,
+    "last_page": 1
+  },
+  "message": "Application letters retrieved successfully"
+}
+```
+
+### POST /application-letters
+**Description**: Create new application letter.
+**Authentication**: Required (api.auth)
+**Request Body**:
+```json
+{
+  "jenis_permohonan": "01",
+  "tgl_mulai": "2025-01-15",
+  "tgl_selesai": "2025-01-15",
+  "deskripsi": "Sick leave",
+  "alasan": "Medical appointment"
+}
+```
+**Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "APP001",
+    "nip_pegawai": "199703062020122015",
+    "jenis_permohonan": "01",
+    "tgl_mulai": "2025-01-15",
+    "tgl_selesai": "2025-01-15",
+    "deskripsi": "Sick leave",
+    "alasan": "Medical appointment",
+    "status": 1,
+    "status_text": "Pending",
+    "created_by": "199703062020122015",
+    "created_on": "2025-01-10 09:00:00"
+  },
+  "message": "Application letter created successfully"
+}
+```
+
+### GET /application-letters/{id}
+**Description**: Get specific application letter by ID.
+**Authentication**: Required (api.auth)
+**Response**: Same format as POST response
+
+### PUT /application-letters/{id}
+**Description**: Update application letter (only pending applications).
+**Authentication**: Required (api.auth)
+**Request Body**: Same fields as POST, all optional
+**Response**: Updated application letter object
+
+### DELETE /application-letters/{id}
+**Description**: Delete application letter (only pending applications).
+**Authentication**: Required (api.auth)
+**Response**:
+```json
+{
+  "status": "success",
+  "data": null,
+  "message": "Application letter deleted successfully"
+}
+```
+
 ### GET /application-letters/check-approval
 **Description**: Check if there's an approved application letter for a specific date and employee.
 **Authentication**: Required (api.auth)
