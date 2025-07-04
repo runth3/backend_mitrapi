@@ -17,6 +17,13 @@ class Performance extends Model
     protected $connection = 'mysql_ekin'; // Use the ekinerja database connection
 
     /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = false;
+
+    /**
      * The table associated with the model.
      *
      * @var string
