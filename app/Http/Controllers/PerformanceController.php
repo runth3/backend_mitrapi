@@ -102,7 +102,7 @@ class PerformanceController extends Controller
                 'tupoksi' => 'nullable|string',
                 'periodeKinerja' => 'nullable|string',
                 'target' => 'nullable|integer',
-                'satuanTarget' => 'nullable|string',
+                'satuanTarget' => 'nullable|string',  
             ]);
 
             if ($validator->fails()) {
@@ -141,8 +141,8 @@ class PerformanceController extends Controller
 
             $start = Carbon::createFromFormat('H:i', $request->durasiKinerjaMulai);
             $end = Carbon::createFromFormat('H:i', $request->durasiKinerjaSelesai);
-            $durationInMinutes = $end->diffInMinutes($start);
-            $durationString = $end->diff($start)->format('%H:%I');
+            $durationInMinutes = $start->diffInMinutes($end);
+            $durationString = $start->diff($end)->format('%H:%I');
 
             // Get apvId from UserEkinerja
             $userEkinerja = UserEkinerja::where('NIP', $user->username)->first();
@@ -159,11 +159,13 @@ class PerformanceController extends Controller
                 'apv' => 'P',
                 'apvId' => $apvId,
                 'tupoksi' => $request->tupoksi,
-                'periodeKinerja' => $request->periodeKinerja,
+                'periodeKinerja' =>  Carbon::parse($request->tglKinerja)->format('Ym'),    
                 'target' => $request->target,
                 'satuanTarget' => $request->satuanTarget,
                 'NIP' => $user->username,
                 'stsDel' => 0,
+                'tglInput' => Carbon::now(),
+
             ]);
 
             Log::info('Performance created successfully', [
