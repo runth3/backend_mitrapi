@@ -502,7 +502,7 @@ public function uploadPhoto(Request $request)
             $fileName = "{$user->username}_{$timestamp}.{$fileExtension}";
             $publicPath = "attendance/{$dateFolder}/{$fileName}";
 
-            $request->file('photo')->storeAs("public/attendance/{$dateFolder}", $fileName);
+            $request->file('photo')->storeAs("attendance/{$dateFolder}", $fileName, 'public');
             $publicUrl = asset("storage/attendance/{$dateFolder}/{$fileName}");
 
             // Generate unique ID for selfie record
@@ -512,7 +512,7 @@ public function uploadPhoto(Request $request)
             DataSelfie::create([
                 'id_data_selfie' => $idDataSelfie,
                 'nip' => $user->username,
-                'nama_file' => $fileName,
+                'nama_file' => $publicUrl,
                 'tgl_selfie' => $currentDateTime,
                 'checktype' => $request->checktype,
                 'jenis_absensi' => $request->jenis_absensi
