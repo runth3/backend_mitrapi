@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class DataSelfie extends Model
 {
+
+    protected $connection = 'mysql_absen';
     protected $table = 'vd_data_selfie';
     protected $primaryKey = 'id_data_selfie';
     public $incrementing = false;
