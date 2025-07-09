@@ -548,6 +548,98 @@ public function uploadPhoto(Request $request)
         }
     }
 
+    public function getPhoto(Request $request, $filePath)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            // Decode the file path
+            $decodedPath = base64_decode($filePath);
+            $fullPath = storage_path('app/private/' . $decodedPath);
+
+            // Check if file exists
+            if (!file_exists($fullPath)) {
+                return $this->errorResponse('Photo not found', 404);
+            }
+
+            // Check if user owns this photo (basic security)
+            if (!str_contains($decodedPath, $user->username)) {
+                return $this->errorResponse('Unauthorized access to photo', 403);
+            }
+
+            return response()->file($fullPath);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve photo', [
+                'user_id' => $user->id,
+                'file_path' => $filePath,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to retrieve photo', 500);
+        }
+    }
+
+    public function listPhotos(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $validator = Validator::make($request->all(), [
+                'date' => 'nullable|date',
+                'checktype' => 'nullable|in:I,O,auto,manual'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->errorResponse('Invalid input', 400, $validator->errors()->toArray());
+            }
+
+            // Get photos from vd_data_selfie table
+            $query = \DB::connection('mysql_absen')
+                ->table('vd_data_selfie')
+                ->where('nip', $user->username);
+
+            if ($request->date) {
+                $query->whereDate('tgl_selfie', $request->date);
+            }
+
+            if ($request->checktype) {
+                $query->where('checktype', $request->checktype);
+            }
+
+            $photos = $query->orderBy('tgl_selfie', 'desc')->get();
+
+            return $this->successResponse(
+                data: $photos->map(function ($photo) {
+                    // Check if photo_url is just filename or full URL
+                    $photoUrl = $photo->nama_file;
+                    if ($photoUrl && !str_starts_with($photoUrl, 'http')) {
+                        $photoUrl = 'https://absen.mitrakab.go.id/upload_files/' . $photoUrl;
+                    }
+                    
+                    return [
+                        'id' => $photo->id_data_selfie,
+                        'photo_url' => $photoUrl,
+                        'date' => $photo->tgl_selfie,
+                        'checktype' => $photo->checktype,
+                        'jenis_absensi' => $photo->jenis_absensi
+                    ];
+                }),
+                message: 'Photos retrieved successfully'
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to list photos', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse('Failed to retrieve photos', 500);
+        }
+    }
+
     /**
      * Generate a unique id_checkinout.
      *
