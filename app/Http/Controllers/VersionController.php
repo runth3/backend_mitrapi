@@ -12,9 +12,9 @@ class VersionController extends Controller
     public function checkVersion(Request $request)
     {
         try {
-            $currentVersion = $request->header('X-App-Version', '1.0.0');
-            $latestVersion = '1.2.0';
-            $minVersion = '1.0.0';
+            $currentVersion = $request->header('X-App-Version', '1.5.0');
+            $latestVersion = '1.9.0';
+            $minVersion = '1.5.0';
             
             $currentVersionSupported = version_compare($currentVersion, $minVersion, '>=');
             $forceUpdate = version_compare($currentVersion, $minVersion, '<');
