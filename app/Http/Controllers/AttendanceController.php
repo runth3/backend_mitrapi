@@ -583,10 +583,22 @@ public function uploadPhoto(Request $request)
 
     public function listPhotos(Request $request)
     {
+        Log::info('listPhotos method called', [
+            'url' => $request->url(),
+            'method' => $request->method(),
+            'headers' => $request->headers->all(),
+        ]);
+        
         $user = auth()->user();
         if (!$user) {
+            Log::error('User not authenticated in listPhotos');
             return $this->errorResponse('User not authenticated', 401);
         }
+        
+        Log::info('User authenticated in listPhotos', [
+            'user_id' => $user->id,
+            'username' => $user->username,
+        ]);
 
         try {
             $validator = Validator::make($request->all(), [
