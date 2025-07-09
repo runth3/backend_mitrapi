@@ -367,18 +367,26 @@ class FaceModelController extends Controller
 
             $filePath = storage_path('app/' . $faceModel->image_path);
 
+            Log::info('Checking face model file', [
+                'user_id' => $user->id,
+                'face_model_id' => $id,
+                'image_path' => $faceModel->image_path,
+                'full_file_path' => $filePath,
+                'file_exists' => file_exists($filePath),
+            ]);
+
             if (!file_exists($filePath)) {
                 Log::warning('Face model file not found', [
                     'user_id' => $user->id,
                     'face_model_id' => $id,
                     'file_path' => $filePath,
+                    'image_path' => $faceModel->image_path,
                     'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
                 ]);
                 return $this->errorResponse(
                     message: 'Face model file not found',
                     statusCode: 404,
-                    details: null
+                    details: ['file_path' => $filePath, 'image_path' => $faceModel->image_path]
                 );
             }
 
