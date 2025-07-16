@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ApplicationLetter;
+use App\Models\DataPegawaiEkinerja;
 use App\Http\Resources\ApplicationLetterResource;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
@@ -174,6 +175,11 @@ class ApplicationLetterController extends Controller
             $idDataPermohonan = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 13));
             $namaFile = null;
 
+            // Get id_instansi and id_unit_kerja from DataPegawaiEkinerja
+            $pegawai = DataPegawaiEkinerja::where('nip', $user->username)->first();
+            $idInstansi = $pegawai->id_instansi ?? null;
+            $idUnitKerja = $pegawai->id_unit_kerja ?? null;
+
             // Handle file upload if provided
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
@@ -196,6 +202,8 @@ class ApplicationLetterController extends Controller
                 'deskripsi' => $request->deskripsi,
                 'alasan' => $request->alasan,
                 'nama_file' => $namaFile,
+                'id_instansi' => $idInstansi,
+                'id_unit_kerja' => $idUnitKerja,
                 'status' => 1, // 1 = new/pending
                 'cre_by' => $user->username,
                 'cre_on' => Carbon::now('Asia/Makassar')
