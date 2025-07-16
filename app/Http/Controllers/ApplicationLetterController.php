@@ -163,7 +163,8 @@ class ApplicationLetterController extends Controller
                 'tgl_mulai' => 'required|date',
                 'tgl_selesai' => 'required|date|after_or_equal:tgl_mulai',
                 'deskripsi' => 'required|string',
-                'alasan' => 'nullable|string'
+                'alasan' => 'nullable|string',
+                'file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048'
             ]);
 
             if ($validator->fails()) {
@@ -171,6 +172,20 @@ class ApplicationLetterController extends Controller
             }
 
             $idDataPermohonan = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 13));
+            $namaFile = null;
+
+            // Handle file upload if provided
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $fileExtension = $file->getClientOriginalExtension();
+                $tglMulai = Carbon::parse($request->tgl_mulai)->format('Ymd');
+                $randomString = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 6));
+                $fileName = "{$tglMulai}_{$request->jenis_permohonan}_{$randomString}.{$fileExtension}";
+                $filePath = "letter/{$user->username}/{$fileName}";
+                
+                $file->storeAs("letter/{$user->username}", $fileName, 'public');
+                $namaFile = asset("storage/{$filePath}");
+            }
 
             $application = ApplicationLetter::create([
                 'id_data_permohonan' => $idDataPermohonan,
@@ -180,6 +195,7 @@ class ApplicationLetterController extends Controller
                 'tgl_selesai' => $request->tgl_selesai,
                 'deskripsi' => $request->deskripsi,
                 'alasan' => $request->alasan,
+                'nama_file' => $namaFile,
                 'status' => 1, // 1 = new/pending
                 'cre_by' => $user->username,
                 'cre_on' => Carbon::now('Asia/Makassar')
@@ -221,6 +237,93 @@ class ApplicationLetterController extends Controller
     }
 
     public function update(Request $request, $id)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $application = ApplicationLetter::where('id_data_permohonan', $id)
+                ->where('nip_pegawai', $user->username)
+                ->first();
+
+            if (!$application) {
+                return $this->errorResponse('Application letter not found', 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'jenis_permohonan' => 'required|string|max:10',
+                'tgl_mulai' => 'required|date',
+                'tgl_selesai' => 'required|date|after_or_equal:tgl_mulai',
+                'deskripsi' => 'required|string',
+                'alasan' => 'nullable|string',
+                'file' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->errorResponse('Invalid input', 422, $validator->errors()->toArray());
+            }
+
+            $namaFile = $application->nama_file;
+
+            // Handle file upload if provided
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $fileExtension = $file->getClientOriginalExtension();
+                $tglMulai = Carbon::parse($request->tgl_mulai)->format('Ymd');
+                $randomString = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 6));
+                $fileName = "{$tglMulai}_{$request->jenis_permohonan}_{$randomString}.{$fileExtension}";
+                $filePath = "letter/{$user->username}/{$fileName}";
+                
+                $file->storeAs("letter/{$user->username}", $fileName, 'public');
+                $namaFile = asset("storage/{$filePath}");
+            }
+
+            $application->update([
+                'jenis_permohonan' => $request->jenis_permohonan,
+                'tgl_mulai' => $request->tgl_mulai,
+                'tgl_selesai' => $request->tgl_selesai,
+                'deskripsi' => $request->deskripsi,
+                'alasan' => $request->alasan,
+                'nama_file' => $namaFile
+            ]);
+
+            return $this->successResponse(
+                data: new ApplicationLetterResource($application),
+                message: 'Application letter updated successfully'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to update application letter', 500, $e->getMessage());
+        }
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return $this->errorResponse('User not authenticated', 401);
+        }
+
+        try {
+            $application = ApplicationLetter::where('id_data_permohonan', $id)
+                ->where('nip_pegawai', $user->username)
+                ->first();
+
+            if (!$application) {
+                return $this->errorResponse('Application letter not found', 404);
+            }
+
+            $application->delete();
+
+            return $this->successResponse(
+                data: null,
+                message: 'Application letter deleted successfully'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to delete application letter', 500, $e->getMessage());
+        }
+    }pdate(Request $request, $id)
     {
         $user = auth()->user();
         if (!$user) {
