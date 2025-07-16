@@ -87,7 +87,8 @@ class FaceModelController extends Controller
 
             $folderPath = 'faces/' . $targetUser->username;
             $fileName = time() . '.' . $request->file('image')->getClientOriginalExtension();
-            $filePath = $request->file('image')->storeAs($folderPath, $fileName, 'local');
+            $filePath = $request->file('image')->storeAs($folderPath, $fileName, 'public');
+            $publicUrl = asset('storage/' . $filePath);
 
             // Auto-activate if user uploads their own face model, otherwise keep inactive
             $autoActivate = $targetUser->id === $authenticatedUser->id;
@@ -99,7 +100,7 @@ class FaceModelController extends Controller
             
             $faceModel = FaceModel::create([
                 'user_id' => $targetUser->id,
-                'image_path' => $filePath,
+                'image_path' => $publicUrl,
                 'is_active' => $autoActivate,
             ]);
 
@@ -296,7 +297,7 @@ class FaceModelController extends Controller
                 );
             }
 
-            Storage::disk('local')->delete($faceModel->image_path);
+            Storage::disk('public')->delete(str_replace(asset('storage/'), '', $faceModel->image_path));
             $faceModel->delete();
 
             Log::info('Face model deleted', [
@@ -338,12 +339,6 @@ class FaceModelController extends Controller
             $faceModel = FaceModel::find($id);
 
             if (!$faceModel) {
-                Log::warning('Face model not found', [
-                    'user_id' => $user->id,
-                    'face_model_id' => $id,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
-                ]);
                 return $this->errorResponse(
                     message: 'Face model not found',
                     statusCode: 404,
@@ -352,12 +347,6 @@ class FaceModelController extends Controller
             }
 
             if ($faceModel->user_id !== $user->id && !$user->is_admin) {
-                Log::warning('Unauthorized attempt to view face model', [
-                    'user_id' => $user->id,
-                    'face_model_id' => $id,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
-                ]);
                 return $this->errorResponse(
                     message: 'Unauthorized: You cannot view this face model',
                     statusCode: 403,
@@ -367,26 +356,18 @@ class FaceModelController extends Controller
 
             $filePath = storage_path('app/' . $faceModel->image_path);
 
-            Log::info('Checking face model file', [
-                'user_id' => $user->id,
-                'face_model_id' => $id,
-                'image_path' => $faceModel->image_path,
-                'full_file_path' => $filePath,
-                'file_exists' => file_exists($filePath),
-            ]);
-
             if (!file_exists($filePath)) {
                 Log::warning('Face model file not found', [
                     'user_id' => $user->id,
                     'face_model_id' => $id,
                     'file_path' => $filePath,
-                    'image_path' => $faceModel->image_path,
                     'ip' => $request->ip(),
+                    'headers' => $request->headers->all(),
                 ]);
                 return $this->errorResponse(
                     message: 'Face model file not found',
                     statusCode: 404,
-                    details: ['file_path' => $filePath, 'image_path' => $faceModel->image_path]
+                    details: null
                 );
             }
 
@@ -399,13 +380,6 @@ class FaceModelController extends Controller
 
             return response()->file($filePath);
         } catch (\Exception $e) {
-            Log::error('Failed to retrieve face model', [
-                'user_id' => $request->user()->id ?? 'unknown',
-                'face_model_id' => $id,
-                'ip' => $request->ip(),
-                'error' => $e->getMessage(),
-                'headers' => $request->headers->all(),
-            ]);
             return $this->errorResponse(
                 message: 'Failed to retrieve face model',
                 statusCode: 500,
