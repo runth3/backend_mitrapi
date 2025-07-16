@@ -24,12 +24,7 @@ class FaceModelController extends Controller
             $user = $request->user();
             $faceModels = FaceModel::where('user_id', $user->id)->get();
 
-            Log::info('Face models retrieved', [
-                'user_id' => $user->id,
-                'count' => $faceModels->count(),
-                'ip' => $request->ip(),
-                'headers' => $request->headers->all(),
-            ]);
+
 
             return $this->successResponse(
                 data: new FaceModelCollection($faceModels),
@@ -38,12 +33,7 @@ class FaceModelController extends Controller
                 statusCode: 200
             );
         } catch (\Exception $e) {
-            Log::error('Failed to retrieve face models', [
-                'user_id' => $request->user()->id ?? 'unknown',
-                'ip' => $request->ip(),
-                'error' => $e->getMessage(),
-                'headers' => $request->headers->all(),
-            ]);
+
             return $this->errorResponse(
                 message: 'Failed to retrieve face models',
                 statusCode: 500,
@@ -68,12 +58,7 @@ class FaceModelController extends Controller
 
             if ($targetUserId) {
                 if (!$authenticatedUser->is_admin) {
-                    Log::warning('Unauthorized attempt to upload face model for another user', [
-                        'user_id' => $authenticatedUser->id,
-                        'target_user_id' => $targetUserId,
-                        'ip' => $request->ip(),
-                        'headers' => $request->headers->all(),
-                    ]);
+
                     return $this->errorResponse(
                         message: 'Unauthorized: Only admins can upload for other users',
                         statusCode: 403,
@@ -104,13 +89,7 @@ class FaceModelController extends Controller
                 'is_active' => $autoActivate,
             ]);
 
-            Log::info('Face model created', [
-                'user_id' => $targetUser->id,
-                'face_model_id' => $faceModel->id,
-                'file_path' => $filePath,
-                'ip' => $request->ip(),
-                'headers' => $request->headers->all(),
-            ]);
+
 
             return $this->successResponse(
                 data: new FaceModelResource($faceModel),
@@ -119,24 +98,14 @@ class FaceModelController extends Controller
                 statusCode: 201
             );
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::info('Face model creation failed: Validation error', [
-                'user_id' => $request->user()->id ?? 'unknown',
-                'ip' => $request->ip(),
-                'errors' => $e->errors(),
-                'headers' => $request->headers->all(),
-            ]);
+
             return $this->errorResponse(
                 message: 'Invalid input',
                 statusCode: 400,
                 details: $e->errors()
             );
         } catch (\Exception $e) {
-            Log::error('Face model creation failed', [
-                'user_id' => $request->user()->id ?? 'unknown',
-                'ip' => $request->ip(),
-                'error' => $e->getMessage(),
-                'headers' => $request->headers->all(),
-            ]);
+
             return $this->errorResponse(
                 message: 'Failed to create face model',
                 statusCode: 500,
@@ -155,12 +124,7 @@ class FaceModelController extends Controller
             $faceModel = FaceModel::find($id);
 
             if (!$faceModel) {
-                Log::warning('Face model not found', [
-                    'user_id' => $user->id,
-                    'face_model_id' => $id,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
-                ]);
+
                 return $this->errorResponse(
                     message: 'Face model not found',
                     statusCode: 404,
@@ -169,12 +133,7 @@ class FaceModelController extends Controller
             }
 
             if ($faceModel->user_id !== $user->id && !$user->is_admin) {
-                Log::warning('Unauthorized attempt to set active face model', [
-                    'user_id' => $user->id,
-                    'face_model_id' => $id,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
-                ]);
+
                 return $this->errorResponse(
                     message: 'Unauthorized: You cannot modify this face model',
                     statusCode: 403,
@@ -185,12 +144,7 @@ class FaceModelController extends Controller
             FaceModel::where('user_id', $faceModel->user_id)->update(['is_active' => false]);
             $faceModel->update(['is_active' => true]);
 
-            Log::info('Face model set as active', [
-                'user_id' => $faceModel->user_id,
-                'face_model_id' => $id,
-                'ip' => $request->ip(),
-                'headers' => $request->headers->all(),
-            ]);
+
 
             return $this->successResponse(
                 data: new FaceModelResource($faceModel),
@@ -199,13 +153,7 @@ class FaceModelController extends Controller
                 statusCode: 200
             );
         } catch (\Exception $e) {
-            Log::error('Failed to set active face model', [
-                'user_id' => $request->user()->id ?? 'unknown',
-                'face_model_id' => $id,
-                'ip' => $request->ip(),
-                'error' => $e->getMessage(),
-                'headers' => $request->headers->all(),
-            ]);
+
             return $this->errorResponse(
                 message: 'Failed to set active face model',
                 statusCode: 500,
@@ -238,10 +186,7 @@ class FaceModelController extends Controller
                 ->first();
 
             if (!$faceModel) {
-                Log::info('No active face model found', [
-                    'user_id' => $userId,
-                    'requester_id' => $user->id,
-                ]);
+
                 return $this->errorResponse(
                     message: 'No active face model found',
                     statusCode: 404,
@@ -249,11 +194,7 @@ class FaceModelController extends Controller
                 );
             }
 
-            Log::info('Active face model retrieved', [
-                'user_id' => $userId,
-                'face_model_id' => $faceModel->id,
-                'requester_id' => $user->id,
-            ]);
+
 
             return $this->successResponse(
                 data: new FaceModelResource($faceModel),
@@ -262,10 +203,7 @@ class FaceModelController extends Controller
                 statusCode: 200
             );
         } catch (\Exception $e) {
-            Log::error('Failed to retrieve active face model', [
-                'user_id' => $request->query('user_id', $request->user()->id ?? 'unknown'),
-                'error' => $e->getMessage(),
-            ]);
+
             return $this->errorResponse(
                 message: 'Failed to retrieve active face model',
                 statusCode: 500,
@@ -284,12 +222,7 @@ class FaceModelController extends Controller
             $faceModel = FaceModel::where('id', $id)->where('user_id', $user->id)->first();
 
             if (!$faceModel) {
-                Log::warning('Face model not found or unauthorized', [
-                    'user_id' => $user->id,
-                    'face_model_id' => $id,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
-                ]);
+
                 return $this->errorResponse(
                     message: 'Face model not found or you are not authorized',
                     statusCode: 404,
@@ -300,12 +233,7 @@ class FaceModelController extends Controller
             Storage::disk('public')->delete(str_replace(asset('storage/'), '', $faceModel->image_path));
             $faceModel->delete();
 
-            Log::info('Face model deleted', [
-                'user_id' => $user->id,
-                'face_model_id' => $id,
-                'ip' => $request->ip(),
-                'headers' => $request->headers->all(),
-            ]);
+
 
             return $this->successResponse(
                 data: null,
@@ -314,13 +242,7 @@ class FaceModelController extends Controller
                 statusCode: 200
             );
         } catch (\Exception $e) {
-            Log::error('Failed to delete face model', [
-                'user_id' => $request->user()->id ?? 'unknown',
-                'face_model_id' => $id,
-                'ip' => $request->ip(),
-                'error' => $e->getMessage(),
-                'headers' => $request->headers->all(),
-            ]);
+
             return $this->errorResponse(
                 message: 'Failed to delete face model',
                 statusCode: 500,
@@ -338,11 +260,7 @@ class FaceModelController extends Controller
             $user = $request->user();
             $faceModel = FaceModel::find($id);
             
-            Log::info('Face model show request', [
-                'authenticated_user_id' => $user->id,
-                'requested_face_model_id' => $id,
-                'face_model_owner_id' => $faceModel->user_id ?? 'not_found'
-            ]);
+
 
             if (!$faceModel) {
                 return $this->errorResponse(
@@ -353,12 +271,7 @@ class FaceModelController extends Controller
             }
 
             if ($faceModel->user_id !== $user->id && !$user->is_admin) {
-                Log::warning('Unauthorized face model access attempt', [
-                    'authenticated_user_id' => $user->id,
-                    'face_model_user_id' => $faceModel->user_id,
-                    'face_model_id' => $id,
-                    'is_admin' => $user->is_admin ?? false
-                ]);
+
                 return $this->errorResponse(
                     message: 'Unauthorized: You cannot view this face model',
                     statusCode: 403,
@@ -402,12 +315,7 @@ class FaceModelController extends Controller
             $user = $request->user();
 
             if ($userId != $user->id && !$user->is_admin) {
-                Log::warning('Unauthorized attempt to view face models for another user', [
-                    'user_id' => $user->id,
-                    'target_user_id' => $userId,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
-                ]);
+
                 return $this->errorResponse(
                     message: 'Unauthorized: You cannot view face models for other users',
                     statusCode: 403,
@@ -418,12 +326,7 @@ class FaceModelController extends Controller
             $faceModels = FaceModel::where('user_id', $userId)->get();
 
             if ($faceModels->isEmpty()) {
-                Log::info('No face models found for user', [
-                    'user_id' => $user->id,
-                    'target_user_id' => $userId,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
-                ]);
+
                 return $this->errorResponse(
                     message: 'No face models found for this user',
                     statusCode: 404,
@@ -431,13 +334,7 @@ class FaceModelController extends Controller
                 );
             }
 
-            Log::info('Face models retrieved for user', [
-                'user_id' => $user->id,
-                'target_user_id' => $userId,
-                'count' => $faceModels->count(),
-                'ip' => $request->ip(),
-                'headers' => $request->headers->all(),
-            ]);
+
 
             return $this->successResponse(
                 data: new FaceModelCollection($faceModels),
@@ -446,13 +343,7 @@ class FaceModelController extends Controller
                 statusCode: 200
             );
         } catch (\Exception $e) {
-            Log::error('Failed to retrieve face models for user', [
-                'user_id' => $request->user()->id ?? 'unknown',
-                'target_user_id' => $userId,
-                'ip' => $request->ip(),
-                'error' => $e->getMessage(),
-                'headers' => $request->headers->all(),
-            ]);
+
             return $this->errorResponse(
                 message: 'Failed to retrieve face models',
                 statusCode: 500,
