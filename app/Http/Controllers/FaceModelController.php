@@ -366,7 +366,6 @@ class FaceModelController extends Controller
                 );
             }
 
-            // Check if image_path exists and is accessible
             if (!$faceModel->image_path) {
                 return $this->errorResponse(
                     message: 'Face model image not available',
@@ -375,31 +374,16 @@ class FaceModelController extends Controller
                 );
             }
 
-            $filePath = storage_path('app/' . $faceModel->image_path);
-
-            if (!file_exists($filePath)) {
-                Log::warning('Face model file not found', [
-                    'user_id' => $user->id,
-                    'face_model_id' => $id,
-                    'file_path' => $filePath,
-                    'ip' => $request->ip(),
-                    'headers' => $request->headers->all(),
-                ]);
-                return $this->errorResponse(
-                    message: 'Face model file not found',
-                    statusCode: 404,
-                    details: null
-                );
+            // Handle old data that may only have filename
+            $imagePath = $faceModel->image_path;
+            if (!str_starts_with($imagePath, 'http')) {
+                $imagePath = asset('storage/' . $imagePath);
             }
 
-            Log::info('Face model retrieved', [
-                'user_id' => $user->id,
-                'face_model_id' => $id,
-                'ip' => $request->ip(),
-                'headers' => $request->headers->all(),
-            ]);
-
-            return response()->file($filePath);
+            return $this->successResponse(
+                data: ['image_path' => $imagePath],
+                message: 'Face model image path retrieved successfully'
+            );
         } catch (\Exception $e) {
             return $this->errorResponse(
                 message: 'Failed to retrieve face model',
