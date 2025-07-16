@@ -337,6 +337,12 @@ class FaceModelController extends Controller
         try {
             $user = $request->user();
             $faceModel = FaceModel::find($id);
+            
+            Log::info('Face model show request', [
+                'authenticated_user_id' => $user->id,
+                'requested_face_model_id' => $id,
+                'face_model_owner_id' => $faceModel->user_id ?? 'not_found'
+            ]);
 
             if (!$faceModel) {
                 return $this->errorResponse(
@@ -347,9 +353,24 @@ class FaceModelController extends Controller
             }
 
             if ($faceModel->user_id !== $user->id && !$user->is_admin) {
+                Log::warning('Unauthorized face model access attempt', [
+                    'authenticated_user_id' => $user->id,
+                    'face_model_user_id' => $faceModel->user_id,
+                    'face_model_id' => $id,
+                    'is_admin' => $user->is_admin ?? false
+                ]);
                 return $this->errorResponse(
                     message: 'Unauthorized: You cannot view this face model',
                     statusCode: 403,
+                    details: null
+                );
+            }
+
+            // Check if image_path exists and is accessible
+            if (!$faceModel->image_path) {
+                return $this->errorResponse(
+                    message: 'Face model image not available',
+                    statusCode: 404,
                     details: null
                 );
             }
